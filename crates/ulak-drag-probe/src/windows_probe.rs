@@ -570,7 +570,7 @@ pub fn run(arguments: Arguments) -> Result<()> {
             Some((&*data as *const WindowData).cast()),
         )?;
         let mut message = MSG::default();
-        while GetMessageW(&mut message, None, 0, 0).as_bool() {
+        while GetMessageW(&mut message, None, 0, 0).0 > 0 {
             let _ = TranslateMessage(&message);
             DispatchMessageW(&message);
         }
@@ -616,5 +616,140 @@ mod tests {
             assert_eq!(offset, 49_999_999_996);
             assert!(stream.Seek(-1, STREAM_SEEK_SET, None).is_err());
         }
+    }
+
+    #[test]
+    fn descriptor_medium_is_lazy_and_rejects_invalid_file_indices() {
+        let directory = tempfile::tempdir().unwrap();
+        let core = Core::open(directory.path(), "Probe").unwrap();
+        let remote = core.descriptor("https://127.0.0.1:1/").unwrap();
+        let info = FileInfo {
+            share_id: "share".into(),
+            entry_id: "entry".into(),
+            name: "example.bin".into(),
+            size: 5_000_000_000,
+            revision: "rev".into(),
+            digest: "digest".into(),
+        };
+        let source = Source::new(core, remote, info, Arc::new(AtomicBool::new(false))).unwrap();
+        let object: IDataObject = Files {
+            sources: vec![source],
+            descriptor_format: 50001,
+            content_format: 50002,
+        }
+        .into();
+        let descriptor = FORMATETC {
+            cfFormat: 50001,
+            dwAspect: DVASPECT_CONTENT.0,
+            lindex: -1,
+            tymed: TYMED_HGLOBAL.0 as u32,
+            ..Default::default()
+        };
+        unsafe {
+            let mut medium = object.GetData(&descriptor).unwrap();
+            let pointer = GlobalLock(medium.u.hGlobal);
+            assert_eq!(*pointer.cast::<u32>(), 1);
+            let file = pointer
+                .cast::<u8>()
+                .add(4)
+                .cast::<FILEDESCRIPTORW>()
+                .read_unaligned();
+            assert_eq!(
+                ((file.nFileSizeHigh as u64) << 32) | file.nFileSizeLow as u64,
+                5_000_000_000
+            );
+            let _ = GlobalUnlock(medium.u.hGlobal);
+            ReleaseStgMedium(&mut medium);
+            let invalid = FORMATETC {
+                cfFormat: 50002,
+                dwAspect: DVASPECT_CONTENT.0,
+                lindex: 1,
+                tymed: TYMED_ISTREAM.0 as u32,
+                ..Default::default()
+            };
+            assert!(object.QueryGetData(&invalid).is_err());
+            let valid = FORMATETC {
+                lindex: 0,
+                ..invalid
+            };
+            let mut medium = object.GetData(&valid).unwrap();
+            // Obtaining IStream must not connect to this deliberately closed endpoint.
+            assert_eq!(medium.tymed, TYMED_ISTREAM.0 as u32);
+            ReleaseStgMedium(&mut medium);
+        }
+    }
+
+    #[test]
+    fn virtual_stream_reads_and_seeks_over_verified_https_ranges() {
+        use ulak_core::{auth::LanPolicy, server};
+        let directory = tempfile::tempdir().unwrap();
+        let host = Core::open(directory.path().join("host"), "Host").unwrap();
+        let source_path = directory.path().join("payload.bin");
+        let bytes: Vec<u8> = (0..180_000).map(|i| (i % 251) as u8).collect();
+        std::fs::write(&source_path, &bytes).unwrap();
+        let share = host.add_share(&source_path, Audience::Lan).unwrap();
+        let entry = host.entry_id(&share.id, std::path::Path::new("")).unwrap();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let remote = host
+            .descriptor(&format!("https://{}/", listener.local_addr().unwrap()))
+            .unwrap();
+        let stop = tokio_util::sync::CancellationToken::new();
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let task = runtime.spawn(server::serve_listener(
+            host.clone(),
+            listener,
+            vec!["127.0.0.1".parse().unwrap()],
+            LanPolicy {
+                allowed: vec!["127.0.0.1/32".parse().unwrap()],
+            },
+            stop.clone(),
+        ));
+        let recipient = Core::open(directory.path().join("recipient"), "Recipient").unwrap();
+        let client = NativeClient::new(recipient.clone(), remote.clone()).unwrap();
+        let info = runtime.block_on(async {
+            for _ in 0..100 {
+                if client.verify().await.is_ok() {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+            client.prepare(&share.id, &entry).await.unwrap()
+        });
+        let source =
+            Source::new(recipient, remote, info, Arc::new(AtomicBool::new(false))).unwrap();
+        let stream: IStream = RemoteStream {
+            source,
+            position: Mutex::new(0),
+        }
+        .into();
+        unsafe {
+            let mut output = vec![0u8; 140_000];
+            let mut read = 0u32;
+            stream
+                .Read(
+                    output.as_mut_ptr().cast(),
+                    output.len() as u32,
+                    Some(&mut read),
+                )
+                .ok()
+                .unwrap();
+            assert_eq!(read, 140_000);
+            assert_eq!(output, bytes[..140_000]);
+            stream.Seek(17, STREAM_SEEK_SET, None).unwrap();
+            let mut small = [0u8; 19];
+            stream
+                .Read(small.as_mut_ptr().cast(), 19, Some(&mut read))
+                .ok()
+                .unwrap();
+            assert_eq!(small, bytes[17..36]);
+            std::fs::write(&source_path, b"replacement source").unwrap();
+            assert!(
+                stream
+                    .Read(small.as_mut_ptr().cast(), 19, Some(&mut read))
+                    .is_err()
+            );
+        }
+        stop.cancel();
+        runtime.block_on(task).unwrap().unwrap();
     }
 }
