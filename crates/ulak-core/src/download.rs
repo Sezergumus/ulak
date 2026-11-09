@@ -15,15 +15,25 @@ fn destination_directory(path: &Path) -> Result<(PathBuf, Vec<File>)> {
         path.is_absolute(),
         "Destination must be an absolute local directory"
     );
-    std::fs::create_dir_all(path)?;
-    // Reject reparse points in every existing destination component before use.
+    // Validate each ancestor before creating any missing child directories.
     let mut current = PathBuf::new();
     let mut guards = Vec::new();
     for component in path.components() {
+        ensure!(
+            !matches!(
+                component,
+                std::path::Component::ParentDir | std::path::Component::CurDir
+            ),
+            "Destination contains traversal components"
+        );
         current.push(component);
-        if current.is_dir() {
-            guards.push(catalog::open_locked(&current, true)?);
+        if matches!(component, std::path::Component::Prefix(_)) {
+            continue;
         }
+        if !current.exists() {
+            std::fs::create_dir(&current)?;
+        }
+        guards.push(catalog::open_locked(&current, true)?);
     }
     Ok((std::fs::canonicalize(path)?, guards))
 }
@@ -322,7 +332,7 @@ impl Core {
                 loop {
                     let chunk = tokio::select! {
                         _ = cancellation.cancelled() => bail!("Transfer cancelled"),
-                        next = stream.next() => match next { Some(chunk) => chunk?, None => break },
+                        next = tokio::time::timeout(Duration::from_secs(30), stream.next()) => match next.context("Source stopped sending data")? { Some(chunk) => chunk?, None => break },
                     };
                     ensure!(
                         checkpoint.written + chunk.len() as u64 <= checkpoint.file.size,
@@ -375,8 +385,9 @@ impl Core {
         let mut file = file.into_std().await;
         let expected = checkpoint.file.digest.clone();
         let stop = cancellation.clone();
-        let _hash_permit = self.0.hashes.clone().acquire_owned().await?;
+        let hash_permit = self.0.hashes.clone().acquire_owned().await?;
         tokio::task::spawn_blocking(move || -> Result<()> {
+            let _hash_permit = hash_permit;
             let mut hasher = blake3::Hasher::new();
             let mut buffer = [0; BUFFER_SIZE];
             loop {

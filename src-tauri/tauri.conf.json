@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Ulak",
+  "version": "0.1.0",
+  "identifier": "dev.ulak.desktop",
+  "build": { "frontendDist": "../desktop" },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [{ "title": "Ulak · Core development", "width": 920, "height": 620, "minWidth": 600, "minHeight": 400 }],
+    "security": { "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost" }
+  },
+  "bundle": { "active": false }
+}

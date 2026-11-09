@@ -31,7 +31,6 @@ impl NativeClient {
             .tls_built_in_root_certs(false)
             .add_root_certificate(reqwest::Certificate::from_pem(remote.ca_pem.as_bytes())?)
             .connect_timeout(Duration::from_secs(5))
-            .read_timeout(Duration::from_secs(30))
             .build()?;
         Ok(Self { http, remote, core })
     }
@@ -64,21 +63,11 @@ impl NativeClient {
             .http
             .get(url.clone())
             .headers(self.headers(&url)?)
+            .timeout(Duration::from_secs(3600))
             .send()
             .await?
             .error_for_status()?;
-        let mut stream = response.bytes_stream();
-        let mut bytes = Vec::new();
-        use futures_util::StreamExt;
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk?;
-            ensure!(
-                bytes.len() + chunk.len() <= 2 * 1024 * 1024,
-                "Metadata response too large"
-            );
-            bytes.extend_from_slice(&chunk);
-        }
-        Ok(serde_json::from_slice(&bytes)?)
+        bounded_json(response, 2 * 1024 * 1024).await
     }
     pub async fn verify(&self) -> Result<Hello> {
         let challenge = identity::secret();
@@ -86,19 +75,15 @@ impl NativeClient {
         let response = self
             .http
             .request(Method::GET, url)
+            .timeout(Duration::from_secs(10))
             .send()
             .await?
             .error_for_status()?;
-        ensure!(
-            response.content_length().unwrap_or(0) <= 16 * 1024,
-            "Hello too large"
-        );
-        let bytes = response.bytes().await?;
-        ensure!(bytes.len() <= 16 * 1024, "Hello too large");
-        let hello: Hello = serde_json::from_slice(&bytes)?;
+        let hello: Hello = bounded_json(response, 16 * 1024).await?;
         ensure!(
             hello.protocol == PROTOCOL_VERSION
-                && hello.identity == self.remote.identity
+                && hello.identity.id == self.remote.identity.id
+                && hello.identity.public_key == self.remote.identity.public_key
                 && hello.challenge == challenge,
             "Peer identity or protocol mismatch"
         );
@@ -106,6 +91,7 @@ impl NativeClient {
         self.core.update(|state| {
             if let Some(peer) = state.peers.get_mut(&hello.identity.id) {
                 peer.remote.endpoint = self.remote.endpoint.clone();
+                peer.remote.identity.name = hello.identity.name.clone();
                 peer.last_connected = Some(now());
             }
             Ok(())
@@ -122,15 +108,15 @@ impl NativeClient {
             signature: String::new(),
         };
         request.signature = identity::sign(&core.read(), &auth::pair_message(&request)?)?;
-        let response: DeviceIdentity = client
+        let response = client
             .http
             .post(client.url("/v1/pair", &[])?)
             .json(&request)
+            .timeout(Duration::from_secs(10))
             .send()
             .await?
-            .error_for_status()?
-            .json()
-            .await?;
+            .error_for_status()?;
+        let response: DeviceIdentity = bounded_json(response, 16 * 1024).await?;
         ensure!(
             response == invitation.host.identity,
             "Pairing identity mismatch"
@@ -203,9 +189,25 @@ impl NativeClient {
         if offset > 0 {
             request = request.header(reqwest::header::RANGE, format!("bytes={offset}-"));
         }
-        Ok(request
-            .send()
-            .await
-            .context("Source connection interrupted")?)
+        Ok(
+            tokio::time::timeout(Duration::from_secs(30), request.send())
+                .await
+                .context("Source response timed out")??,
+        )
     }
+}
+
+async fn bounded_json<T: DeserializeOwned>(response: reqwest::Response, limit: usize) -> Result<T> {
+    use futures_util::StreamExt;
+    let mut stream = response.error_for_status()?.bytes_stream();
+    let mut bytes = Vec::new();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        ensure!(
+            bytes.len() + chunk.len() <= limit,
+            "Metadata response too large"
+        );
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(serde_json::from_slice(&bytes)?)
 }

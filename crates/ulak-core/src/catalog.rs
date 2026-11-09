@@ -107,7 +107,7 @@ pub(crate) fn open_locked(path: &Path, directory: bool) -> Result<File> {
     #[cfg(windows)]
     {
         use std::os::windows::fs::OpenOptionsExt;
-        // No FILE_SHARE_WRITE or FILE_SHARE_DELETE: keep the source stable.
+        // Files deny writes/deletion; directories allow child updates but deny relocation.
         options
             .share_mode(if directory { 3 } else { 1 })
             .custom_flags(if directory {
@@ -411,9 +411,17 @@ impl Core {
         })
     }
     pub async fn prepare_file(&self, share: Share, entry: String) -> Result<FileInfo> {
-        let _permit = self.0.hashes.clone().acquire_owned().await?;
+        let permit = self
+            .0
+            .hashes
+            .clone()
+            .try_acquire_owned()
+            .context("Hash capacity reached; retry later")?;
+        let cancellation = tokio_util::sync::CancellationToken::new();
+        let _cancel_on_drop = cancellation.clone().drop_guard();
         let core = self.clone();
         tokio::task::spawn_blocking(move || {
+            let _permit = permit;
             let relative = core.entry_path(&share.id, &entry)?;
             let (mut file, _guards) = open_source(&share, &relative)?;
             let metadata = file.metadata()?;
@@ -426,6 +434,7 @@ impl Core {
                     let mut hasher = blake3::Hasher::new();
                     let mut buffer = [0; BUFFER_SIZE];
                     loop {
+                        ensure!(!cancellation.is_cancelled(), "Hashing cancelled");
                         let read = file.read(&mut buffer)?;
                         if read == 0 {
                             break;
