@@ -1,0 +1,21 @@
+[package]
+name = "ulak-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "ulak"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+ulak-core = { path = "../ulak-core" }
+ulak-local = { path = "../ulak-local" }
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio-util.workspace = true

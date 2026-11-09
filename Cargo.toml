@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/ulak-core", "crates/ulak-agent", "crates/ulak-drag-probe", "src-tauri"]
+members = ["crates/ulak-core", "crates/ulak-agent", "crates/ulak-drag-probe", "crates/ulak-local", "crates/ulak-cli", "src-tauri"]
 default-members = ["crates/ulak-core", "crates/ulak-agent", "crates/ulak-drag-probe"]
 
 [workspace.package]
