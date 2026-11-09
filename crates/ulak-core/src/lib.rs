@@ -15,4 +15,3 @@ pub const MAX_TRANSFERS: usize = 4;
 pub const MAX_HASH_JOBS: usize = 2;
 pub const MAX_PAGE_SIZE: usize = 100;
 pub const MAX_RECORDS: usize = 4096;
-
