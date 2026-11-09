@@ -215,7 +215,8 @@ ulak/
 
 ### Design Direction and Window Structure
 
-- Use Raycast as the primary reference for compact desktop presentation, keyboard access, and contextual actions. Use structured lists and a detail panel for file browsing and longer tasks. The main application is a compact, resizable window with enough room to inspect folders and transfers; it is not limited to a command palette.
+- Prioritize compact desktop presentation, keyboard access, and contextual actions, with disciplined spacing, readable typography, and a clear hierarchy centered on device/file rows and search. Use structured lists and a detail panel for file browsing and longer tasks. The main application is a compact, resizable window with enough room to inspect folders and transfers; it is not limited to a command palette.
+- The current desktop visual implementation has not been accepted. Refine its density, proportions, typography, and interaction hierarchy; reduce large promotional headings, slogans, decorative icon areas, excess empty space, and broad accent fills. A dark palette and sidebar alone do not satisfy this direction.
 - Use a dark-first graphite background, subtly lighter panels, off-white text, and a restrained amber accent. Reserve status colors for meaningful states. Prefer thin borders, 8–12 px corner radii, readable typography, short transitions, and limited blur on small surfaces.
 - Use a narrow sidebar with **Devices**, **My shares**, and **Transfers**. Make guest invitations and sessions reachable from share details and the share-management view. Open on Devices, with quick access to recent shares.
 - Prefer aligned rows over large cards for devices and files. Show the selected item's details and actions in a right-side panel. Keep filenames, size, availability, and share audience easy to scan.

@@ -11,6 +11,8 @@ Recorded on 2026-11-09. Automated results below were obtained on Windows using w
 
 ## Checks executed
 
+Visual acceptance is separate from functional validation. The user rejected the current desktop design after review. Simplifying and refining its density, typography, spacing, hierarchy, and contextual actions is planned for the next conversation; no UI changes were made during the feedback handoff.
+
 - `npm run build` through `scripts/npm.ps1`: strict TypeScript and bundled Vite production build passed; no runtime asset requests to external services are required.
 - `npm test` through the wrapper: five tests passed, covering offline audience grants, command-menu navigation, visible verification state across views, snapshot/event races, and guest-link encoding.
 - `build --workspace`: all four executables compiled, including the Tauri desktop and live CLI.
