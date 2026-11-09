@@ -1,5 +1,7 @@
 # ULAK — v1 Architecture & Implementation Specification
 
+Implementation progress and executed checks are recorded in [docs/phase-status.md](docs/phase-status.md). Technical prototypes and manual validation procedures are documented in [docs/feasibility.md](docs/feasibility.md).
+
 ## 1. Product Goal and Release Scope
 
 **Ulak** is an open-source, offline LAN file-sharing tool. A Windows agent exposes explicitly selected files and folders to selected paired PCs, temporary browser guests, or everyone on the local network, according to each share's audience. Recipients browse permitted shares and pull the files they choose. Both PCs can publish and receive.
