@@ -16,13 +16,17 @@ Recorded on 2026-11-09 for continuation in a new conversation.
 
 Ulak is an open-source, offline local-network file-sharing application, initially for Windows. A publisher selects existing files/folders; recipients browse authorized content and pull selected files. Publishing is not a push, upload, copy, or synchronization operation.
 
-The desktop implements the functional window structure: Devices, My shares, and Transfers occupy the narrow sidebar; Add share, native file/folder pickers, Explorer drop-in, `Ctrl+K` commands, and a persistent transfer status area are connected to the core. All frontend assets are bundled locally. The user has rejected the current visual direction; functional implementation and passing tests do not establish visual acceptance.
+The desktop implements the functional window structure: Devices, My shares, and Transfers occupy the narrow sidebar; Add share, native file/folder pickers, Explorer drop-in, `Ctrl+K` commands, and a persistent transfer status area are connected to the core. All frontend assets are bundled locally. The user rejected the previous visual direction and explicitly requested refinement in this continuation. The compact revision is implemented for review; functional implementation and passing tests do not establish visual acceptance.
 
-### Next conversation: desktop design refinement
+### Desktop design refinement: ready for review
 
-The user said the current UI does not match the original compact desktop design direction. The implementation applied a dark palette, sidebar, rows, and command menu too superficially while missing the intended density, proportions, and visual hierarchy. Large promotional headings, slogans, generous empty space, an oversized brand area, large detail icons, and broad amber accents give it a dashboard character. Do not repeat the claim that the visual design already meets the specification.
+The user said the previous UI did not match the original compact desktop design direction. It used a dark palette, sidebar, rows, and command menu while missing the intended density, proportions, and visual hierarchy. Large promotional headings, slogans, generous empty space, an oversized brand area, large detail icons, and broad amber accents gave it a dashboard character. Do not claim visual acceptance without the user's review.
 
-The agreed next work is to simplify and refine the UI in a new conversation: prioritize compact readable typography, disciplined spacing, dense aligned device/file rows, a prominent search/action workflow, contextual actions, quiet surfaces, restrained accents, and keyboard use. Reduce promotional copy and decorative emphasis. Preserve core behavior and permissions while refining the product experience. This session records the feedback only; no UI changes were requested after the design review.
+This continuation replaces promotional headings with a single 52 px toolbar and 14 px view titles. The sidebar is 176 px wide (164 px at compact widths); device/file rows are 52 px tall. Decorative icon tiles, slogans, broad amber selections, and the empty right panel are removed. Details appear only for a selected item and can be closed. Dialogs use smaller headings, closer spacing, and neutral selections. Devices includes quick access to up to three local shares. File sizes/types occupy an aligned column.
+
+`Ctrl+K` opens commands and focuses its input; typing and Enter work without first clicking the search field. `Ctrl+F` focuses the current list filter outside dialogs. Arrow keys, Home, and End move through list actions; Enter opens a paired device's verified shares; Escape clears the filter or dismisses the list selection. Remote filtering applies to the loaded page and retains selected files for download. Existing audiences, offline identities, guest controls, native picker/drag commands, and transfer verification/cancel/resume remain connected to the same core.
+
+The next step is the user's visual review of this revision. Keep further refinements compact, readable, and list-oriented; do not introduce promotional copy or decorative emphasis. Phase 5 has not been requested.
 
 Devices are persistent paired identities, not IP addresses. Offline paired PCs remain visible with last connection information and remain selectable as share recipients. Newly discovered unpaired devices appear separately. Display Offline rather than claiming to know a PC is powered off. An Ethernet cable alone does not make a powered-off, sleeping, or stopped peer reachable. A changed IP/interface must update the same verified identity, preserving trust and permissions; lost installation identity keys require pairing again.
 
@@ -35,7 +39,7 @@ The user explicitly requested phase 4 in this continuation after the first three
 1. Feasibility: bundled browser HTTPS/public-CA onboarding prototype and Windows OLE virtual-file drag probe are implemented. Phone trust/onboarding and actual Explorer drops still need testing.
 2. Trusted core: Rust workspace, Tauri v2 development shell, persistent identity/local CA, authenticated pairing/revocation, signed challenge verification, mDNS candidates/advertisement, verified known-peer endpoint refresh, manual connection descriptors, and protocol negotiation are implemented.
 3. Sharing/downloads: explicit audiences, guest sessions, opaque entries, bounded directory pages and native folder traversal, locked source streaming, HTTP ranges, durable download checkpoints, cancellation/resume, BLAKE3 verification, no-replace finalization, and recovery after a rename/checkpoint crash are implemented.
-4. Desktop integration: the React product UI, offline device audience picker, native picker commands, transfer snapshots/events, guest controls, persistent network settings, close-to-tray lifecycle, Explorer drag handle using the shared COM implementation, and protected named-pipe CLI are implemented. Real WebView/CLI smoke checks passed. Visual design is not accepted and needs the refinement described above. Native dialog interactions, actual Explorer drops, and tray mouse/menu checks remain pending.
+4. Desktop integration: the React product UI, offline device audience picker, native picker commands, transfer snapshots/events, guest controls, persistent network settings, close-to-tray lifecycle, Explorer drag handle using the shared COM implementation, and protected named-pipe CLI are implemented. The compact UI revision is ready for visual review. Real WebView/CLI smoke checks passed, including keyboard command navigation and share/file layouts at 1080×720 and 820×560. Native dialog interactions, actual Explorer drops, and tray mouse/menu checks remain pending.
 5. Guest release polish and release validation remain later work and have not been requested. The guest interface supports fragment-based invitation links from the desktop, but phone trust/onboarding and offline browser acceptance remain open.
 
 Deferred v1 features remain deferred: clipboard functionality, automatic synchronization, compression/ZIP creation, guest uploads, whole-folder browser downloads, native mobile apps, non-Windows desktop agents, and dragging complete remote folders into Explorer.
@@ -80,7 +84,7 @@ Deferred v1 features remain deferred: clipboard functionality, automatic synchro
 ## Executed checks
 
 - Frontend strict TypeScript/Vite production build: passed.
-- Frontend tests: five passed, covering command navigation, offline audience grants, visible verification, snapshot/event races, and guest invitation links.
+- Frontend tests: seven passed, covering keyboard filtering/device browsing, remote file selection/download while filtering, command input focus and Enter navigation, offline audience grants, visible verification, snapshot/event races, and guest invitation links.
 - `build --workspace`: passed, including all four executables and the Tauri shell.
 - `test --workspace`: 33 passed, one disk-intensive test ignored by default.
 - Separate execution of the ignored large-transfer test with 268,435,456 bytes: passed with full content verification.
@@ -92,6 +96,10 @@ Deferred v1 features remain deferred: clipboard functionality, automatic synchro
 - Local resume also reconciles an already-renamed verified file without a reachable sender; the core owns the decision to contact the sender.
 - Node syntax check for `guest/guest.js`: passed. The previous session also checked the historical console.
 - COM tests cover descriptors, invalid indices, lazy streams, sizes, seeking/cloning, real HTTPS range reads, and rejection after source changes. They do not establish real Explorer interoperability.
+
+UI refinement validation: strict frontend production build, seven frontend tests, `build -p ulak-desktop`, formatting, script syntax, and the expanded native WebView smoke passed. The smoke exercises `Ctrl+F`, command input focus and Enter navigation, LAN-open browsing, and absence of horizontal overflow at 1080×720 and an emulated 820×560 viewport. Screenshots were visually inspected; final successful runs are `.tools/desktop-smoke-ddc0eb7dcaa34593b6746d9e68b0691f` and `.tools/desktop-smoke-df2ee5e9bd6447c08073ba570440e35f`. Rust core/IPC code did not change; the earlier full Rust test/lint results above were not rerun for this UI revision.
+
+One preceding smoke run (`.tools/desktop-smoke-0c5e847f7a434ebfbe0acd5ef5e63cf3`) returned Windows error 5 during a CLI download and left an interrupted checkpoint at zero bytes. Two subsequent full runs passed without retries inside the test. The cause has not been isolated; do not describe transfer validation as consistently failure-free or claim this was fixed by the UI work.
 
 Pending: native file/folder/destination picker interaction; real Explorer drop-in and single/multiple/large drag-out copies, progress/cancellation/failure cleanup; tray icon/menu interaction; a separate Windows account's CLI rejection; real iOS/Android trusted HTTPS with internet disconnected; physical second Windows PC and multicast/interface behavior; true network interruption; disk exhaustion; 50 GB transfer and sustained-memory measurement. A 256 MiB localhost test does not satisfy these checks.
 
@@ -125,6 +133,6 @@ The original full-debug build exhausted this workspace volume. `cargo clean` rem
 
 ## Git handoff
 
-This continuation started from clean `main` at `e053408`. Phase 4 was explicitly requested and implemented in separate verified commits for local CLI/IPC, shared Explorer streams, desktop integration, and validation/documentation. Inspect `git log` and `git status` for the actual final state; do not infer HEAD from this note. No remote or publication was added.
+The UI refinement continuation started from clean `main` at `5864c96`, with no remote configured. Phase 4 had already been implemented in separate verified commits for local CLI/IPC, shared Explorer streams, desktop integration, and validation/documentation. The compact UI and its measured validation are committed separately from these updated handoff records. Inspect `git log` and `git status` for the actual final state; do not infer HEAD from this note. No remote or publication was added.
 
 The user noticed a smoke-test window closing and asked to continue if work was unfinished. Explain when an isolated test window is intentionally quit. A separately opened idle desktop can hold the executable during rebuilding; inspect active transfers before stopping it. Leave the normal updated desktop open for review at the end of this continuation. The user has not requested phase 5.
