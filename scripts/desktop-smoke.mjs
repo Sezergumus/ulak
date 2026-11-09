@@ -95,6 +95,36 @@ async function screenshot(name) {
   const result = await send("Page.captureScreenshot", { format: "png" });
   await writeFile(join(fixture, name), Buffer.from(result.data, "base64"));
 }
+async function key(key, code, modifiers = 0) {
+  await send("Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key,
+    code,
+    modifiers,
+  });
+  await send("Input.dispatchKeyEvent", { type: "keyUp", key, code });
+}
+async function checkLayout() {
+  const metrics = await evaluate(`(() => {
+    const main = document.querySelector('main');
+    const details = document.querySelector('.details');
+    const row = main.querySelector('.list-row');
+    return {
+      pageFits: document.documentElement.scrollWidth <= innerWidth,
+      listFits: main.scrollWidth <= main.clientWidth,
+      detailsFit: !details || details.scrollWidth <= details.clientWidth,
+      actionsFit: document.querySelector('.topbar .actions').getBoundingClientRect().right <= innerWidth,
+      titleSize: parseFloat(getComputedStyle(document.querySelector('h1')).fontSize),
+      rowHeight: row?.getBoundingClientRect().height ?? 0,
+    };
+  })()`);
+  assert.equal(metrics.pageFits, true);
+  assert.equal(metrics.listFits, true);
+  assert.equal(metrics.detailsFit, true);
+  assert.equal(metrics.actionsFit, true);
+  assert.ok(metrics.titleSize <= 16, "View title must remain compact");
+  assert.ok(metrics.rowHeight <= 56, "List rows must remain compact");
+}
 function httpsJson(url, ca, options = {}) {
   return new Promise((resolve, reject) => {
     const request = https.request(url, { ca, ...options }, (response) => {
@@ -152,6 +182,25 @@ try {
     occupied.close();
   }
   await screenshot("devices.png");
+  await checkLayout();
+  await key("f", "KeyF", 2);
+  assert.equal(
+    await evaluate(`document.activeElement?.getAttribute('aria-label')`),
+    "Filter current list",
+  );
+  await key("k", "KeyK", 2);
+  await until(
+    `document.querySelector('[role=dialog]')?.textContent.includes('Commands')`,
+  );
+  await until(`document.activeElement?.hasAttribute('cmdk-input')`);
+  await send("Input.insertText", { text: "Transfers" });
+  await until(
+    `document.querySelector('[cmdk-item][data-selected=true]')?.textContent === 'Transfers'`,
+  );
+  await key("Enter", "Enter");
+  await until(
+    `document.querySelector('h1')?.textContent === 'Transfers' && !document.querySelector('[role=dialog]')`,
+  );
   const source = join(fixture, "sample.txt");
   const content = "Ulak desktop and local CLI verified transfer.\n";
   await writeFile(source, content);
@@ -163,6 +212,7 @@ try {
   );
   await evaluate(`document.querySelector('main .list-row').click()`);
   await click("Manage access");
+  await screenshot("audience.png");
   await evaluate(
     `document.querySelectorAll('input[name=audience]')[2].click()`,
   );
@@ -170,6 +220,17 @@ try {
   await until(`!document.querySelector('[role=dialog]')`);
   assert.equal((await invoke("snapshot")).shares[0].share.audience.kind, "lan");
   await screenshot("shares.png");
+  await checkLayout();
+  await send("Emulation.setDeviceMetricsOverride", {
+    width: 820,
+    height: 560,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
+  await delay(150);
+  await checkLayout();
+  await screenshot("shares-compact.png");
+  await send("Emulation.clearDeviceMetricsOverride");
   await click("Guest invitation");
   await click("Create invitation");
   await until(
@@ -205,6 +266,29 @@ try {
   await evaluate(
     `document.querySelector('[aria-label="Close dialog"]').click()`,
   );
+  await evaluate(`document.querySelectorAll('nav button')[0].click()`);
+  await click("Connect a device");
+  await click("Browse LAN-open shares");
+  await evaluate(`document.querySelector('.dialog textarea').focus()`);
+  await send("Input.insertText", { text: JSON.stringify(descriptor) });
+  await click("Connect");
+  await until(
+    `document.querySelector('.remote-browser .row-link')?.textContent.includes('sample.txt')`,
+  );
+  await evaluate(`document.querySelector('.remote-browser .row-link').click()`);
+  await until(`!!document.querySelector('[aria-label="Select sample.txt"]')`);
+  await checkLayout();
+  await screenshot("remote-browser.png");
+  await send("Emulation.setDeviceMetricsOverride", {
+    width: 820,
+    height: 560,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
+  await delay(150);
+  await checkLayout();
+  await screenshot("remote-browser-compact.png");
+  await send("Emulation.clearDeviceMetricsOverride");
   const config = await (
     await fetch(`http://${snapshot.network.onboarding}/`)
   ).text();
@@ -250,8 +334,11 @@ try {
   assert.deepEqual(errors, []);
   await invoke("quit_app");
   console.log(
-    "PASS: native WebView, share audience UI, guest invitation/redemption, certificate setup, live CLI download, close-to-tray service continuity, window reopening, explicit quit.",
+    "PASS: native WebView, keyboard shortcuts/command navigation, compact share/browser layout at 1080 and 820 pixels, share audience UI, guest invitation/redemption, LAN-open browsing, certificate setup, live CLI download, close-to-tray service continuity, window reopening, explicit quit.",
   );
+} catch (error) {
+  await screenshot("failure.png").catch(() => {});
+  throw error;
 } finally {
   socket.close();
 }

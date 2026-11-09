@@ -22,11 +22,13 @@ export function RemoteBrowser({
   onBack,
   run,
   setPreparing,
+  query,
 }: {
   remote: Remote;
   onBack: () => void;
   run: (fn: () => Promise<unknown>) => Promise<void>;
   setPreparing: (update: (value: number) => number) => void;
+  query: string;
 }) {
   const [locations, setLocations] = useState<Location[]>([
     { name: remote.identity.name, share: null, entry: null, cursor: null },
@@ -39,6 +41,9 @@ export function RemoteBrowser({
   const sequence = useRef(0);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const location = locations[locations.length - 1];
+  const visibleItems = page.items.filter((item) =>
+    item.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
+  );
   useEffect(() => {
     const current = ++sequence.current;
     setLoading(true);
@@ -231,7 +236,13 @@ export function RemoteBrowser({
         </p>
       ) : (
         <>
-          {page.items.map((item) => (
+          {!!visibleItems.length && (
+            <div className="file-columns" aria-hidden="true">
+              <span>Name</span>
+              <span>Size / type</span>
+            </div>
+          )}
+          {visibleItems.map((item) => (
             <div className="list-row" key={item.id}>
               {location.share && !item.is_dir ? (
                 <input
@@ -251,6 +262,7 @@ export function RemoteBrowser({
               </span>
               <button
                 className="row-name row-link"
+                data-list-item
                 disabled={item.available === false}
                 onClick={() => {
                   if (!location.share || item.is_dir)
@@ -267,16 +279,16 @@ export function RemoteBrowser({
                 }}
               >
                 {item.name}
-                <small>
-                  {item.available === false
-                    ? "Unavailable"
-                    : item.is_dir
-                      ? "Folder"
-                      : item.size !== undefined
-                        ? size(item.size)
-                        : "Shared file"}
-                </small>
               </button>
+              <span className="file-meta">
+                {item.available === false
+                  ? "Unavailable"
+                  : item.is_dir
+                    ? "Folder"
+                    : item.size !== undefined
+                      ? size(item.size)
+                      : "File"}
+              </span>
               {location.share && (
                 <Button
                   variant="ghost"
@@ -289,8 +301,12 @@ export function RemoteBrowser({
               <ChevronRight size={14} />
             </div>
           ))}
-          {!page.items.length && (
-            <p className="quiet">No accessible content in this location.</p>
+          {!visibleItems.length && (
+            <p className="quiet">
+              {query
+                ? `No files match “${query}” on this page.`
+                : "No accessible content in this location."}
+            </p>
           )}
           <div className="pagination">
             {page.next_cursor && (

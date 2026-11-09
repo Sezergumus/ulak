@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Snapshot } from "./types";
 import { App } from "./App";
@@ -64,13 +64,123 @@ beforeEach(() => {
 });
 
 describe("desktop access and transfer flows", () => {
-  it("opens the command menu with Ctrl+K and navigates with its visible actions", async () => {
+  it("filters and navigates devices from the keyboard, then opens their shares with Enter", async () => {
+    const user = userEvent.setup();
+    mock.invoke.mockImplementation(async (name: string) =>
+      name === "snapshot"
+        ? structuredClone(snapshot)
+        : name === "presence" || name === "discover"
+          ? []
+          : name === "local_request"
+            ? {
+                items: [
+                  { id: "remote-share", name: "Reference files", is_dir: true },
+                ],
+                next_cursor: null,
+              }
+            : null,
+    );
+    render(<App />);
+    await screen.findByText("Studio PC");
+    expect(
+      screen.queryByRole("complementary", { name: "Selected item details" }),
+    ).toBeNull();
+    await user.keyboard("{Control>}f{/Control}");
+    const filter = screen.getByRole("textbox", { name: "Filter current list" });
+    expect(document.activeElement).toBe(filter);
+    await user.type(filter, "missing");
+    expect(screen.getByText("No paired devices match “missing”.")).toBeTruthy();
+    await user.keyboard("{Escape}");
+    expect((filter as HTMLInputElement).value).toBe("");
+    await user.type(filter, "studio");
+    await user.keyboard("{ArrowDown}");
+    expect(document.activeElement?.textContent).toContain("Studio PC");
+    expect(
+      screen.getByRole("complementary", { name: "Selected item details" }),
+    ).toBeTruthy();
+    await user.keyboard("{Enter}");
+    expect(
+      await screen.findByRole("button", { name: /Reference files/ }),
+    ).toBeTruthy();
+    expect(mock.invoke).toHaveBeenCalledWith("verify_peer", { remote });
+    expect((filter as HTMLInputElement).value).toBe("");
+    await user.click(screen.getByRole("button", { name: "Close details" }));
+    expect(
+      screen.queryByRole("complementary", { name: "Selected item details" }),
+    ).toBeNull();
+    expect(document.activeElement).toBe(filter);
+    expect(
+      screen.getByRole("button", { name: /Reference files/ }),
+    ).toBeTruthy();
+  });
+
+  it("keeps remote file selection while filtering and downloads the selected file through the destination picker", async () => {
+    const user = userEvent.setup();
+    mock.invoke.mockImplementation(
+      async (name: string, args?: { request?: { share?: string } }) => {
+        if (name === "snapshot") return structuredClone(snapshot);
+        if (name === "presence" || name === "discover") return [];
+        if (name === "pick_destination") return "D:\\Downloads";
+        if (name === "local_request")
+          return {
+            items: args?.request?.share
+              ? [
+                  { id: "notes", name: "notes.txt", is_dir: false, size: 12 },
+                  { id: "photo", name: "photo.png", is_dir: false, size: 24 },
+                ]
+              : [{ id: "remote-share", name: "Reference files", is_dir: true }],
+            next_cursor: null,
+          };
+        return null;
+      },
+    );
+    render(<App />);
+    await user.dblClick(
+      await screen.findByRole("button", { name: /Studio PC/ }),
+    );
+    await user.click(
+      await screen.findByRole("button", { name: /Reference files/ }),
+    );
+    await user.click(
+      await screen.findByRole("checkbox", { name: "Select notes.txt" }),
+    );
+    await user.keyboard("{Control>}f{/Control}");
+    await user.type(
+      screen.getByRole("textbox", { name: "Filter current list" }),
+      "photo",
+    );
+    expect(
+      screen.queryByRole("checkbox", { name: "Select notes.txt" }),
+    ).toBeNull();
+    expect(screen.getByText("1 selected (max 4)")).toBeTruthy();
+    await user.click(
+      within(screen.getByRole("main")).getByRole("button", {
+        name: "Download",
+      }),
+    );
+    await waitFor(() =>
+      expect(mock.invoke).toHaveBeenCalledWith("local_request", {
+        request: {
+          command: "download",
+          remote,
+          share: "remote-share",
+          entry: "notes",
+          destination: "D:\\Downloads",
+        },
+      }),
+    );
+  });
+
+  it("opens the command menu with Ctrl+K, focuses search, and runs a command with Enter", async () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByText("Studio PC");
     await user.keyboard("{Control>}k{/Control}");
     await screen.findByRole("dialog", { name: "Commands" });
-    await user.click(screen.getByRole("option", { name: "My shares" }));
+    expect(document.activeElement).toBe(
+      screen.getByPlaceholderText("Type a command…"),
+    );
+    await user.keyboard("My shares{Enter}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(
       screen
@@ -88,18 +198,16 @@ describe("desktop access and transfer flows", () => {
       }),
     );
     const refresh = useStore.getState().refresh();
-    useStore
-      .getState()
-      .transfer({
-        id: "current",
-        remote,
-        file: { name: "latest.bin", size: 100 },
-        destination: "D:\\latest.bin",
-        written: 100,
-        state: "verifying",
-        error: null,
-        bytes_per_second: 0,
-      });
+    useStore.getState().transfer({
+      id: "current",
+      remote,
+      file: { name: "latest.bin", size: 100 },
+      destination: "D:\\latest.bin",
+      written: 100,
+      state: "verifying",
+      error: null,
+      bytes_per_second: 0,
+    });
     resolve(structuredClone(snapshot));
     await refresh;
     expect(useStore.getState().data?.transfers[0].state).toBe("verifying");

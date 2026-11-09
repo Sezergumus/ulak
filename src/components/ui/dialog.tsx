@@ -1,5 +1,5 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import { X } from "lucide-react";
 import { Button } from "./button";
 
@@ -9,12 +9,14 @@ export function Dialog({
   title,
   description,
   children,
+  initialFocusRef,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   description: string;
   children: ReactNode;
+  initialFocusRef?: RefObject<HTMLElement | null>;
 }) {
   return (
     <DialogPrimitive.Root
@@ -25,7 +27,15 @@ export function Dialog({
     >
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="overlay" />
-        <DialogPrimitive.Content className="dialog">
+        <DialogPrimitive.Content
+          className="dialog"
+          onOpenAutoFocus={(event) => {
+            if (initialFocusRef?.current) {
+              event.preventDefault();
+              initialFocusRef.current.focus();
+            }
+          }}
+        >
           <header>
             <div>
               <DialogPrimitive.Title>{title}</DialogPrimitive.Title>

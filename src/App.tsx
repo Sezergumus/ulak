@@ -10,6 +10,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
 import { listen } from "@tauri-apps/api/event";
@@ -21,7 +22,6 @@ import {
   ArrowRight,
   Check,
   ChevronRight,
-  Command as CommandIcon,
   File,
   Folder,
   FolderPlus,
@@ -79,6 +79,8 @@ export function App() {
   const [drop, setDrop] = useState(false);
   const [remote, setRemote] = useState<Remote | null>(null);
   const [preparing, setPreparing] = useState(0);
+  const filterRef = useRef<HTMLInputElement>(null);
+  const commandInputRef = useRef<HTMLInputElement>(null);
   const scanLock = useRef(false);
   const suspendedShare = useRef<Modal>(null);
   useEffect(() => {
@@ -174,6 +176,12 @@ export function App() {
         event.preventDefault();
         setPalette((value) => !value);
       }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
+        if (document.querySelector('[role="dialog"]')) return;
+        event.preventDefault();
+        filterRef.current?.focus();
+        filterRef.current?.select();
+      }
     };
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
@@ -200,6 +208,65 @@ export function App() {
   const selectedTransfer = data?.transfers.find((item) => item.id === selected);
   const includes = (name: string) =>
     name.toLocaleLowerCase().includes(query.toLocaleLowerCase());
+  const visiblePeers = peers.filter((peer) =>
+    includes(peer.remote.identity.name),
+  );
+  const visibleFound = found.filter(
+    (item) => !item.paired && includes(item.name),
+  );
+  const visibleShares =
+    data?.shares.filter((item) => includes(item.share.name)) ?? [];
+  const visibleTransfers =
+    data?.transfers.filter((item) => includes(item.file.name)) ?? [];
+  const hasDetails = Boolean(
+    (view === "devices" && selectedPeer) ||
+    (view === "shares" && selectedShare) ||
+    (view === "transfers" && selectedTransfer),
+  );
+  const listKeys = (event: ReactKeyboardEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement;
+    const inFilter = target === filterRef.current;
+    if (!inFilter && !target.matches("[data-list-item]")) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (query) setQuery("");
+      else {
+        setSelected("");
+        filterRef.current?.focus();
+      }
+      return;
+    }
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+      return;
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    if (inFilter && event.key !== "ArrowDown" && event.key !== "ArrowUp")
+      return;
+    const rows = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+        "[data-list-item]:not(:disabled)",
+      ),
+    );
+    if (!rows.length) return;
+    event.preventDefault();
+    const current = rows.indexOf(target as HTMLButtonElement);
+    const index =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? rows.length - 1
+          : current < 0
+            ? event.key === "ArrowUp"
+              ? rows.length - 1
+              : 0
+            : Math.max(
+                0,
+                Math.min(
+                  rows.length - 1,
+                  current + (event.key === "ArrowDown" ? 1 : -1),
+                ),
+              );
+    rows[index].focus();
+  };
   const choosePeer = (peer: Peer) => {
     setSelected(peer.remote.identity.id);
     setRemote(null);
@@ -209,19 +276,24 @@ export function App() {
     setOnline((current) => [...new Set([...current, peer.remote.identity.id])]);
     setRemote(peer.remote);
     setSelected(peer.remote.identity.id);
+    setQuery("");
   };
   return (
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-icon">
-            <Radio size={21} />
-          </span>
-          <strong>
-            ulak<span>LOCAL FILE SHARING</span>
-          </strong>
+          <Radio size={17} />
+          <strong>ulak</strong>
         </div>
-        <span className="eyebrow">WORKSPACE</span>
+        <button
+          className="command-trigger"
+          aria-keyshortcuts="Control+k"
+          onClick={() => setPalette(true)}
+        >
+          <Search size={14} />
+          <span>Commands</span>
+          <kbd>Ctrl K</kbd>
+        </button>
         <nav aria-label="Main navigation">
           <Nav
             selected={view === "devices"}
@@ -245,15 +317,6 @@ export function App() {
             count={tasks.length}
           />
         </nav>
-        <div className="sidebar-note">
-          <ShieldCheck size={17} />
-          <p>
-            Direct. Local. Yours.
-            <span>
-              Files stay at their source until someone downloads them.
-            </span>
-          </p>
-        </div>
         <div className="sidebar-bottom">
           <Button variant="ghost" onClick={() => setModal({ kind: "network" })}>
             <Settings2 size={16} />
@@ -274,41 +337,23 @@ export function App() {
       </aside>
       <div className="workspace">
         <header className="topbar">
-          <span>
-            Personal workspace <ChevronRight size={13} />
-            <b>
-              {view === "devices"
-                ? "Devices"
-                : view === "shares"
-                  ? "My shares"
-                  : "Transfers"}
-            </b>
-          </span>
-          <Button variant="ghost" onClick={() => setPalette(true)}>
-            <CommandIcon size={15} />
-            Commands <kbd>Ctrl K</kbd>
-          </Button>
-        </header>
-        <section className="page-heading">
-          <div>
-            <div className="eyebrow">YOUR LOCAL NETWORK</div>
-            <h1>
-              {view === "devices"
-                ? "A little closer."
-                : view === "shares"
-                  ? "Ready to share."
-                  : "On its way."}
-            </h1>
-            <p>
-              {view === "devices"
-                ? "Your computers, connected. Browse and bring files home."
-                : view === "shares"
-                  ? "Choose what is available, and who can access it."
-                  : "Every download, from preparation to verified completion."}
-            </p>
-          </div>
+          <h1>
+            {view === "devices"
+              ? "Devices"
+              : view === "shares"
+                ? "My shares"
+                : "Transfers"}
+          </h1>
           <div className="actions">
-            <Button onClick={() => run(() => pick(true))}>
+            {view === "devices" && (
+              <Button
+                variant="ghost"
+                onClick={() => setModal({ kind: "connect" })}
+              >
+                <Plus size={14} /> Connect a device
+              </Button>
+            )}
+            <Button variant="ghost" onClick={() => run(() => pick(true))}>
               <FolderPlus size={16} />
               Add folder
             </Button>
@@ -317,7 +362,7 @@ export function App() {
               Add share
             </Button>
           </div>
-        </section>
+        </header>
         {error && (
           <div className="error-banner" role="alert">
             <span>{error}</span>
@@ -330,20 +375,27 @@ export function App() {
             </Button>
           </div>
         )}
-        <div className="content-grid">
-          <main>
+        <div className={`content-grid ${hasDetails ? "with-details" : ""}`}>
+          <main onKeyDown={listKeys}>
             <div className="list-toolbar">
               <label className="search">
                 <Search size={16} />
                 <input
+                  ref={filterRef}
                   aria-label="Filter current list"
+                  aria-keyshortcuts="Control+f"
                   placeholder={
-                    view === "devices" ? "Find a device…" : "Filter by name…"
+                    remote
+                      ? "Filter files…"
+                      : view === "devices"
+                        ? "Find a device…"
+                        : "Filter by name…"
                   }
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
               </label>
+              <kbd className="filter-shortcut">Ctrl F</kbd>
               {view === "devices" ? (
                 <Button
                   variant="ghost"
@@ -353,59 +405,59 @@ export function App() {
                   <RefreshCw size={15} className={scanning ? "spin" : ""} />
                   {scanning ? "Scanning" : "Scan network"}
                 </Button>
-              ) : (
-                <span className="muted">
-                  {view === "shares"
-                    ? (data?.shares.length ?? 0)
-                    : (data?.transfers.length ?? 0)}{" "}
-                  items
-                </span>
-              )}
+              ) : null}
             </div>
             {view === "devices" && !remote && (
               <>
                 <SectionLabel
-                  label="PAIRED DEVICES"
-                  extra={`${online.length} online`}
+                  label="Paired devices"
+                  extra={`${peers.filter((peer) => online.includes(peer.remote.identity.id)).length} online · ${peers.length} paired`}
                 />
-                {peers
-                  .filter((peer) => includes(peer.remote.identity.name))
-                  .map((peer) => (
-                    <button
-                      key={peer.remote.identity.id}
-                      className={`list-row ${selected === peer.remote.identity.id ? "selected" : ""}`}
-                      onClick={() => choosePeer(peer)}
-                      onDoubleClick={() => run(() => openPeer(peer))}
+                {visiblePeers.map((peer) => (
+                  <button
+                    key={peer.remote.identity.id}
+                    className={`list-row ${selected === peer.remote.identity.id ? "selected" : ""} ${online.includes(peer.remote.identity.id) ? "" : "offline"}`}
+                    data-list-item
+                    aria-pressed={selected === peer.remote.identity.id}
+                    onFocus={() => choosePeer(peer)}
+                    onClick={() => choosePeer(peer)}
+                    onDoubleClick={() => run(() => openPeer(peer))}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void run(() => openPeer(peer));
+                      }
+                    }}
+                  >
+                    <span
+                      className={`item-icon ${online.includes(peer.remote.identity.id) ? "warm" : ""}`}
                     >
-                      <span
-                        className={`item-icon ${online.includes(peer.remote.identity.id) ? "warm" : ""}`}
-                      >
-                        <Monitor size={22} />
-                      </span>
-                      <span className="row-name">
-                        {peer.remote.identity.name}
-                        <small>
-                          {online.includes(peer.remote.identity.id)
-                            ? "Verified connection · ready to browse"
-                            : `Last connected: ${date(peer.last_connected)}`}
-                        </small>
-                      </span>
-                      <span className="status">
-                        <span
-                          className={`dot ${online.includes(peer.remote.identity.id) ? "green" : ""}`}
-                        />
+                      <Monitor size={22} />
+                    </span>
+                    <span className="row-name">
+                      {peer.remote.identity.name}
+                      <small>
                         {online.includes(peer.remote.identity.id)
-                          ? "Online"
-                          : "Offline"}
-                      </span>
-                      <ChevronRight size={15} />
-                    </button>
-                  ))}
+                          ? "Paired · verified"
+                          : `Last connected: ${date(peer.last_connected)}`}
+                      </small>
+                    </span>
+                    <span className="status">
+                      <span
+                        className={`dot ${online.includes(peer.remote.identity.id) ? "green" : ""}`}
+                      />
+                      {online.includes(peer.remote.identity.id)
+                        ? "Online"
+                        : "Offline"}
+                    </span>
+                    <ChevronRight size={15} />
+                  </button>
+                ))}
                 {!peers.length && (
                   <Empty
                     icon={<Monitor size={30} />}
-                    title="Make your first connection"
-                    text="Pair a computer to keep it here, even when it goes offline."
+                    title="No paired devices"
+                    text="Connect a computer to browse its shares."
                     action={
                       <Button onClick={() => setModal({ kind: "connect" })}>
                         <Link size={15} />
@@ -414,31 +466,67 @@ export function App() {
                     }
                   />
                 )}
-                <SectionLabel label="FOUND ON THE NETWORK" extra="Unpaired" />
-                {found
-                  .filter((item) => !item.paired && includes(item.name))
-                  .map((item) => (
-                    <div className="list-row" key={item.id}>
-                      <span className="item-icon">
-                        <Wifi size={21} />
-                      </span>
-                      <span className="row-name">
-                        {item.name}
-                        <small>
-                          Unverified discovery · exchange an invitation to pair
-                        </small>
-                      </span>
-                      <Button onClick={() => setModal({ kind: "connect" })}>
-                        Connect
-                      </Button>
-                    </div>
-                  ))}
-                {!found.some((item) => !item.paired) && (
+                {peers.length > 0 && !visiblePeers.length && (
+                  <p className="quiet">No paired devices match “{query}”.</p>
+                )}
+                <SectionLabel label="Found on the network" extra="Unpaired" />
+                {visibleFound.map((item) => (
+                  <div className="list-row" key={item.id}>
+                    <span className="item-icon">
+                      <Wifi size={21} />
+                    </span>
+                    <span className="row-name">
+                      {item.name}
+                      <small>Unverified · pair to trust this device</small>
+                    </span>
+                    <Button
+                      data-list-item
+                      onClick={() => setModal({ kind: "connect" })}
+                    >
+                      Connect
+                    </Button>
+                  </div>
+                ))}
+                {!visibleFound.length && (
                   <p className="quiet">
                     {scanning
                       ? "Looking for nearby Ulak agents…"
-                      : "No unpaired Ulak agents found. You can connect manually."}
+                      : query
+                        ? `No discovered devices match “${query}”.`
+                        : "No unpaired devices found."}
                   </p>
+                )}
+                {!!data?.shares.length && !query && (
+                  <div className="recent-shares">
+                    <SectionLabel label="My shares" extra="Quick access" />
+                    {data.shares
+                      .slice(-3)
+                      .reverse()
+                      .map((item) => (
+                        <button
+                          key={item.share.id}
+                          className="list-row"
+                          data-list-item
+                          onClick={() => {
+                            navigate("shares");
+                            setSelected(item.share.id);
+                          }}
+                        >
+                          <span className="item-icon">
+                            {item.is_dir ? (
+                              <Folder size={18} />
+                            ) : (
+                              <File size={18} />
+                            )}
+                          </span>
+                          <span className="row-name">
+                            {item.share.name}
+                            <small>{audienceLabel(item.share.audience)}</small>
+                          </span>
+                          <ChevronRight size={14} />
+                        </button>
+                      ))}
+                  </div>
                 )}
                 <button
                   className="drop-target"
@@ -446,7 +534,7 @@ export function App() {
                 >
                   <Upload size={19} />
                   <span>
-                    Drop files or folders here{" "}
+                    Drop files or folders{" "}
                     <small>Choose who can access them next</small>
                   </span>
                   <Plus size={17} />
@@ -456,56 +544,57 @@ export function App() {
             {view === "devices" && remote && (
               <RemoteBrowser
                 remote={remote}
-                onBack={() => setRemote(null)}
+                onBack={() => {
+                  setRemote(null);
+                  setQuery("");
+                }}
                 run={run}
                 setPreparing={setPreparing}
+                query={query}
               />
             )}
             {view === "shares" && (
               <>
                 <SectionLabel
-                  label="PUBLISHED SOURCES"
-                  extra="Original files · no copies"
+                  label="Published sources"
+                  extra={`${data?.shares.length ?? 0} share${data?.shares.length === 1 ? "" : "s"}`}
                 />
-                {data?.shares
-                  .filter((item) => includes(item.share.name))
-                  .map((item) => (
-                    <button
-                      className={`list-row ${selected === item.share.id ? "selected" : ""}`}
-                      key={item.share.id}
-                      onClick={() => setSelected(item.share.id)}
-                    >
-                      <span className="item-icon warm">
-                        {item.is_dir ? (
-                          <Folder size={22} />
-                        ) : (
-                          <File size={22} />
-                        )}
-                      </span>
-                      <span className="row-name">
-                        {item.share.name}
-                        <small>
-                          {audienceLabel(item.share.audience)}
-                          {data.sessions.some(
-                            (s) =>
-                              s.shares.includes(item.share.id) &&
-                              s.expires_at > Date.now() / 1000,
-                          )
-                            ? " · guest session"
-                            : ""}
-                        </small>
-                      </span>
-                      <span className={`badge ${item.available ? "" : "bad"}`}>
-                        {item.available ? "Available" : "Unavailable"}
-                      </span>
-                      <ChevronRight size={15} />
-                    </button>
-                  ))}
+                {visibleShares.map((item) => (
+                  <button
+                    className={`list-row ${selected === item.share.id ? "selected" : ""}`}
+                    key={item.share.id}
+                    data-list-item
+                    aria-pressed={selected === item.share.id}
+                    onFocus={() => setSelected(item.share.id)}
+                    onClick={() => setSelected(item.share.id)}
+                  >
+                    <span className="item-icon warm">
+                      {item.is_dir ? <Folder size={22} /> : <File size={22} />}
+                    </span>
+                    <span className="row-name">
+                      {item.share.name}
+                      <small>
+                        {audienceLabel(item.share.audience)}
+                        {data?.sessions.some(
+                          (s) =>
+                            s.shares.includes(item.share.id) &&
+                            s.expires_at > Date.now() / 1000,
+                        )
+                          ? " · guest session"
+                          : ""}
+                      </small>
+                    </span>
+                    <span className={`badge ${item.available ? "" : "bad"}`}>
+                      {item.available ? "Available" : "Unavailable"}
+                    </span>
+                    <ChevronRight size={15} />
+                  </button>
+                ))}
                 {!data?.shares.length && (
                   <Empty
                     icon={<FolderPlus size={30} />}
-                    title="Share something useful"
-                    text="Select existing files or folders. Ulak publishes references and streams from the source."
+                    title="No shares yet"
+                    text="Choose files or folders, then set who can access them."
                     action={
                       <Button onClick={() => run(() => pick(false))}>
                         Choose files
@@ -513,13 +602,16 @@ export function App() {
                     }
                   />
                 )}
+                {!!data?.shares.length && !visibleShares.length && (
+                  <p className="quiet">No shares match “{query}”.</p>
+                )}
                 <button
                   className="drop-target"
                   onClick={() => run(() => pick(true))}
                 >
                   <Upload size={19} />
                   <span>
-                    Drop files or folders here{" "}
+                    Drop files or folders{" "}
                     <small>
                       Nothing is published until you choose an audience
                     </small>
@@ -530,8 +622,8 @@ export function App() {
             {view === "transfers" && (
               <>
                 <SectionLabel
-                  label="DOWNLOAD HISTORY"
-                  extra="Native · verified"
+                  label="Downloads"
+                  extra={`${tasks.length} active`}
                 />
                 {preparing > 0 && (
                   <p className="quiet">
@@ -539,223 +631,223 @@ export function App() {
                     Preparing {preparing} download request(s)…
                   </p>
                 )}
-                {data?.transfers
-                  .filter((item) => includes(item.file.name))
-                  .map((item) => (
-                    <button
-                      key={item.id}
-                      className={`list-row transfer-row ${selected === item.id ? "selected" : ""}`}
-                      onClick={() => setSelected(item.id)}
+                {visibleTransfers.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`list-row transfer-row ${selected === item.id ? "selected" : ""}`}
+                    data-list-item
+                    aria-pressed={selected === item.id}
+                    onFocus={() => setSelected(item.id)}
+                    onClick={() => setSelected(item.id)}
+                  >
+                    <span className="item-icon">
+                      {item.state === "completed" ? (
+                        <Check size={21} />
+                      ) : (
+                        <ArrowDownToLine size={21} />
+                      )}
+                    </span>
+                    <span className="row-name">
+                      {item.file.name}
+                      <small>
+                        {item.remote.identity.name} · {size(item.written)} /{" "}
+                        {size(item.file.size)}
+                      </small>
+                      <Progress transfer={item} />
+                    </span>
+                    <span
+                      className={`badge ${item.state === "failed" || item.state === "interrupted" ? "bad" : ""}`}
                     >
-                      <span className="item-icon">
-                        {item.state === "completed" ? (
-                          <Check size={21} />
-                        ) : (
-                          <ArrowDownToLine size={21} />
-                        )}
-                      </span>
-                      <span className="row-name">
-                        {item.file.name}
-                        <small>
-                          {item.remote.identity.name} · {size(item.written)} /{" "}
-                          {size(item.file.size)}
-                        </small>
-                        <Progress transfer={item} />
-                      </span>
-                      <span
-                        className={`badge ${item.state === "failed" || item.state === "interrupted" ? "bad" : ""}`}
-                      >
-                        {item.state}
-                      </span>
-                    </button>
-                  ))}
+                      {item.state}
+                    </span>
+                  </button>
+                ))}
                 {!data?.transfers.length && !preparing && (
                   <Empty
                     icon={<ArrowDownToLine size={30} />}
-                    title="Nothing in transit"
+                    title="No downloads yet"
                     text="Open a device, browse its shares, and choose files to download."
                   />
+                )}
+                {!!data?.transfers.length && !visibleTransfers.length && (
+                  <p className="quiet">No downloads match “{query}”.</p>
                 )}
               </>
             )}
           </main>
-          <aside className="details" aria-label="Selected item details">
-            {view === "devices" && selectedPeer ? (
-              <>
-                <div className="detail-symbol">
-                  <Monitor size={37} />
-                </div>
-                <h2>{selectedPeer.remote.identity.name}</h2>
-                <span className="badge">
-                  {online.includes(selected) ? "Online · verified" : "Offline"}
-                </span>
-                <dl>
-                  <dt>Last successful connection</dt>
-                  <dd>{date(selectedPeer.last_connected)}</dd>
-                  <dt>Device identity</dt>
-                  <dd className="mono">{selected}</dd>
-                  <dt>Last known address</dt>
-                  <dd className="mono">{selectedPeer.remote.endpoint}</dd>
-                </dl>
-                <Button
-                  variant="default"
-                  onClick={() => run(() => openPeer(selectedPeer))}
-                >
-                  <Folder size={16} />
-                  {online.includes(selected)
-                    ? "Browse shares"
-                    : "Try connecting"}
-                </Button>
-                <p className="hint">
-                  Offline devices stay paired and can receive share permissions.
-                  Downloads need both devices to be reachable.
-                </p>
+          {hasDetails && (
+            <aside className="details" aria-label="Selected item details">
+              <div className="details-heading">
+                <span>Details</span>
                 <Button
                   variant="ghost"
-                  onClick={() =>
-                    run(async () => {
-                      await command("unpair", { device: selected });
-                      setSelected("");
-                      setRemote(null);
-                    })
-                  }
+                  aria-label="Close details"
+                  onClick={() => {
+                    setSelected("");
+                    filterRef.current?.focus();
+                  }}
                 >
-                  Unpair device
+                  <X size={14} />
                 </Button>
-              </>
-            ) : view === "shares" && selectedShare ? (
-              <>
-                <div className="detail-symbol">
-                  <Folder size={37} />
-                </div>
-                <h2>{selectedShare.share.name}</h2>
-                <span className="badge">
-                  {selectedShare.available ? "Available" : "Source unavailable"}
-                </span>
-                <dl>
-                  <dt>Original location</dt>
-                  <dd className="mono">{selectedShare.share.source}</dd>
-                  <dt>Who can access?</dt>
-                  <dd>{audienceLabel(selectedShare.share.audience)}</dd>
-                  {selectedShare.share.audience.kind === "devices" && (
-                    <dd>
-                      {selectedShare.share.audience.devices
-                        .map(
-                          (id) => data?.peers[id]?.remote.identity.name ?? id,
-                        )
-                        .join(", ")}
-                    </dd>
-                  )}
-                </dl>
-                <Button
-                  variant="default"
-                  onClick={() =>
-                    setModal({
-                      kind: "share",
-                      sources: [],
-                      existing: selectedShare,
-                    })
-                  }
-                >
-                  <Users size={16} />
-                  Manage access
-                </Button>
-                <Button
-                  onClick={() => setModal({ kind: "invite", share: selected })}
-                >
-                  <Link size={16} />
-                  Guest invitation
-                </Button>
-                <div className="guest-sessions">
-                  <SectionLabel label="GUEST SESSIONS" />
-                  {data?.sessions
-                    .filter((session) => session.shares.includes(selected))
-                    .map((session) => (
-                      <div key={session.id}>
-                        <small>
-                          {session.expires_at > Date.now() / 1000
-                            ? `Expires ${date(session.expires_at)}`
-                            : "Expired"}
-                          <span className="mono">
-                            {session.id.slice(0, 12)}
-                          </span>
-                        </small>
-                        <Button
-                          variant="ghost"
-                          onClick={() =>
-                            run(() =>
-                              command("revoke_guest", { session: session.id }),
-                            )
-                          }
-                        >
-                          Revoke
-                        </Button>
-                      </div>
-                    ))}
-                </div>
-                <Button
-                  variant="destructive"
-                  onClick={() =>
-                    setModal({ kind: "remove", share: selectedShare })
-                  }
-                >
-                  Remove share
-                </Button>
-              </>
-            ) : view === "transfers" && selectedTransfer ? (
-              <>
-                <div className="detail-symbol">
-                  <ArrowDownToLine size={37} />
-                </div>
-                <h2>{selectedTransfer.file.name}</h2>
-                <span className="badge">{selectedTransfer.state}</span>
-                <Progress transfer={selectedTransfer} />
-                <dl>
-                  <dt>Destination</dt>
-                  <dd className="mono">{selectedTransfer.destination}</dd>
-                  <dt>Progress</dt>
-                  <dd>
-                    {size(selectedTransfer.written)} of{" "}
-                    {size(selectedTransfer.file.size)}
-                  </dd>
-                  <dt>Speed</dt>
-                  <dd>{size(selectedTransfer.bytes_per_second)}/s</dd>
-                </dl>
-                {selectedTransfer.error && (
-                  <p className="inline-error">{selectedTransfer.error}</p>
-                )}
-                <TransferActions transfer={selectedTransfer} run={run} />
-                <p className="hint">
-                  Completion follows full content verification and finalization.
-                  Cancelled downloads retain a checkpoint for explicit resume.
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="detail-symbol neutral">
-                  <ShieldCheck size={37} />
-                </div>
-                <h2>Your files. Your network.</h2>
-                <p className="hint">
-                  Select an item to see its details and available actions.
-                </p>
-                <div className="detail-note">
-                  <Radio size={18} />
-                  <strong>No cloud in between</strong>
-                  <p>
-                    Share directly over your local network, with explicit access
-                    for every source.
-                  </p>
-                </div>
-                {view === "devices" && (
-                  <Button onClick={() => setModal({ kind: "connect" })}>
-                    <Plus size={16} />
-                    Connect a device
+              </div>
+              {view === "devices" && selectedPeer ? (
+                <>
+                  <h2>{selectedPeer.remote.identity.name}</h2>
+                  <span className="badge">
+                    {online.includes(selected)
+                      ? "Online · verified"
+                      : "Offline"}
+                  </span>
+                  <dl>
+                    <dt>Last connected</dt>
+                    <dd>{date(selectedPeer.last_connected)}</dd>
+                    <dt>Device identity</dt>
+                    <dd className="mono">{selected}</dd>
+                    <dt>Last known address</dt>
+                    <dd className="mono">{selectedPeer.remote.endpoint}</dd>
+                  </dl>
+                  <Button
+                    variant="default"
+                    onClick={() => run(() => openPeer(selectedPeer))}
+                  >
+                    <Folder size={16} />
+                    {online.includes(selected)
+                      ? "Browse shares"
+                      : "Try connecting"}
                   </Button>
-                )}
-              </>
-            )}
-          </aside>
+                  {!online.includes(selected) && (
+                    <p className="hint">
+                      This device is offline. Share permissions are kept until
+                      it reconnects.
+                    </p>
+                  )}
+                  <Button
+                    variant="ghost"
+                    onClick={() =>
+                      run(async () => {
+                        await command("unpair", { device: selected });
+                        setSelected("");
+                        setRemote(null);
+                      })
+                    }
+                  >
+                    Unpair device
+                  </Button>
+                </>
+              ) : view === "shares" && selectedShare ? (
+                <>
+                  <h2>{selectedShare.share.name}</h2>
+                  <span className="badge">
+                    {selectedShare.available
+                      ? "Available"
+                      : "Source unavailable"}
+                  </span>
+                  <dl>
+                    <dt>Original location</dt>
+                    <dd className="mono">{selectedShare.share.source}</dd>
+                    <dt>Who can access?</dt>
+                    <dd>{audienceLabel(selectedShare.share.audience)}</dd>
+                    {selectedShare.share.audience.kind === "devices" && (
+                      <dd>
+                        {selectedShare.share.audience.devices
+                          .map(
+                            (id) => data?.peers[id]?.remote.identity.name ?? id,
+                          )
+                          .join(", ")}
+                      </dd>
+                    )}
+                  </dl>
+                  <Button
+                    variant="default"
+                    onClick={() =>
+                      setModal({
+                        kind: "share",
+                        sources: [],
+                        existing: selectedShare,
+                      })
+                    }
+                  >
+                    <Users size={16} />
+                    Manage access
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      setModal({ kind: "invite", share: selected })
+                    }
+                  >
+                    <Link size={16} />
+                    Guest invitation
+                  </Button>
+                  <div className="guest-sessions">
+                    <SectionLabel label="Guest sessions" />
+                    {data?.sessions
+                      .filter((session) => session.shares.includes(selected))
+                      .map((session) => (
+                        <div key={session.id}>
+                          <small>
+                            {session.expires_at > Date.now() / 1000
+                              ? `Expires ${date(session.expires_at)}`
+                              : "Expired"}
+                            <span className="mono">
+                              {session.id.slice(0, 12)}
+                            </span>
+                          </small>
+                          <Button
+                            variant="ghost"
+                            onClick={() =>
+                              run(() =>
+                                command("revoke_guest", {
+                                  session: session.id,
+                                }),
+                              )
+                            }
+                          >
+                            Revoke
+                          </Button>
+                        </div>
+                      ))}
+                    {!data?.sessions.some((session) =>
+                      session.shares.includes(selected),
+                    ) && <p className="hint">No guest sessions.</p>}
+                  </div>
+                  <Button
+                    variant="destructive"
+                    onClick={() =>
+                      setModal({ kind: "remove", share: selectedShare })
+                    }
+                  >
+                    Remove share
+                  </Button>
+                </>
+              ) : view === "transfers" && selectedTransfer ? (
+                <>
+                  <h2>{selectedTransfer.file.name}</h2>
+                  <span className="badge">{selectedTransfer.state}</span>
+                  <Progress transfer={selectedTransfer} />
+                  <dl>
+                    <dt>Destination</dt>
+                    <dd className="mono">{selectedTransfer.destination}</dd>
+                    <dt>Progress</dt>
+                    <dd>
+                      {size(selectedTransfer.written)} of{" "}
+                      {size(selectedTransfer.file.size)}
+                    </dd>
+                    <dt>Speed</dt>
+                    <dd>{size(selectedTransfer.bytes_per_second)}/s</dd>
+                  </dl>
+                  {selectedTransfer.error && (
+                    <p className="inline-error">{selectedTransfer.error}</p>
+                  )}
+                  <TransferActions transfer={selectedTransfer} run={run} />
+                  <p className="hint">
+                    Completion follows full content verification and
+                    finalization. Cancelled downloads retain a checkpoint for
+                    explicit resume.
+                  </p>
+                </>
+              ) : null}
+            </aside>
+          )}
         </div>
         <footer className="transfer-dock">
           {tasks.length ? (
@@ -784,9 +876,7 @@ export function App() {
             <>
               <span className={`dot ${data?.serving ? "green" : ""}`} />
               <span>
-                {preparing
-                  ? "Preparing download…"
-                  : "All quiet. Ready when you are."}
+                {preparing ? "Preparing download…" : "No active transfers"}
               </span>
             </>
           )}
@@ -863,9 +953,10 @@ export function App() {
         onClose={() => setPalette(false)}
         title="Commands"
         description="Find a device, open a share, or choose an action."
+        initialFocusRef={commandInputRef}
       >
         <Command className="command-menu">
-          <Command.Input placeholder="Type a command…" />
+          <Command.Input ref={commandInputRef} placeholder="Type a command…" />
           <Command.List>
             <Command.Empty>No matching commands.</Command.Empty>
             {[
