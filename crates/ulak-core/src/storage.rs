@@ -30,9 +30,16 @@ pub struct Inner {
 pub struct Core(pub Arc<Inner>);
 
 pub fn atomic_json(path: &Path, value: &impl serde::Serialize) -> Result<()> {
-    let parent = path.parent().context("Missing parent")?;
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
     let mut tmp = tempfile::NamedTempFile::new_in(parent)?;
     serde_json::to_writer(tmp.as_file_mut(), value)?;
+    ensure!(
+        tmp.as_file().metadata()?.len() <= 32 * 1024 * 1024,
+        "Metadata state capacity reached"
+    );
     tmp.as_file_mut().flush()?;
     tmp.as_file().sync_all()?;
     tmp.persist(path).map_err(|error| error.error)?;

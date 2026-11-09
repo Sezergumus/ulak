@@ -469,6 +469,26 @@ impl Core {
         })
         .await?
     }
+
+    pub fn touch_directory(
+        &self,
+        share_id: &str,
+        cursor: &str,
+        principal: &Principal,
+    ) -> Result<()> {
+        let mut cursors = self.0.directories.lock().unwrap();
+        let session = cursors
+            .get_mut(cursor)
+            .context("Directory cursor expired")?;
+        ensure!(
+            session.expires > now()
+                && session.share_id == share_id
+                && session.principal == principal.scope(),
+            "Invalid directory cursor"
+        );
+        session.expires = now() + 120;
+        Ok(())
+    }
 }
 
 fn validate_audience(state: &Stored, audience: &Audience) -> Result<()> {

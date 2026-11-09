@@ -139,3 +139,51 @@ pub async fn browse(core: &Core, duration: Duration) -> Result<Vec<Discovered>> 
     let _ = daemon.shutdown();
     Ok(found.into_values().collect())
 }
+
+/// Verify discovered endpoints against already persisted peer trust, with bounded
+/// concurrency and a fixed extra time budget. Unknown devices remain unverified.
+pub async fn browse_verified(core: &Core, duration: Duration) -> Result<Vec<Discovered>> {
+    use futures_util::{StreamExt, stream};
+    let mut found = browse(core, duration).await?;
+    let state = core.read();
+    let candidates = found
+        .iter()
+        .enumerate()
+        .filter_map(|(index, item)| {
+            state
+                .peers
+                .get(&item.id)
+                .cloned()
+                .map(|peer| (index, peer, item.endpoints.clone()))
+        })
+        .collect::<Vec<_>>();
+    let mut checks = stream::iter(candidates.into_iter().map(|(index, peer, endpoints)| {
+        let core = core.clone();
+        async move {
+            for endpoint in endpoints.into_iter().take(4) {
+                let mut remote = peer.remote.clone();
+                remote.endpoint = endpoint;
+                let Ok(client) = crate::client::NativeClient::new(core.clone(), remote) else {
+                    continue;
+                };
+                if tokio::time::timeout(Duration::from_secs(2), client.verify())
+                    .await
+                    .is_ok_and(|result| result.is_ok())
+                {
+                    return (index, true);
+                }
+            }
+            (index, false)
+        }
+    }))
+    .buffer_unordered(4);
+    let deadline = tokio::time::sleep(Duration::from_secs(8));
+    tokio::pin!(deadline);
+    loop {
+        tokio::select! {
+            _ = &mut deadline => break,
+            result = checks.next() => match result { Some((index, verified)) => found[index].verified = verified, None => break },
+        }
+    }
+    Ok(found)
+}

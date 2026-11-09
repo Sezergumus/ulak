@@ -44,8 +44,9 @@ impl IntoResponse for ApiError {
 type ApiResult<T> = std::result::Result<T, ApiError>;
 
 fn principal(api: &Api, headers: &HeaderMap, uri: &Uri) -> ApiResult<Principal> {
-    if !headers.contains_key(header::AUTHORIZATION) && !headers.contains_key("x-ulak-device") {
-        if let Some(token) = headers
+    if !headers.contains_key(header::AUTHORIZATION)
+        && !headers.contains_key("x-ulak-device")
+        && let Some(token) = headers
             .get(header::COOKIE)
             .and_then(|v| v.to_str().ok())
             .and_then(|v| {
@@ -53,16 +54,15 @@ fn principal(api: &Api, headers: &HeaderMap, uri: &Uri) -> ApiResult<Principal> 
                     .map(str::trim)
                     .find_map(|v| v.strip_prefix("ulak_session="))
             })
-        {
-            let mut copy = headers.clone();
-            if let Ok(value) = format!("Bearer {token}").parse() {
-                copy.insert(header::AUTHORIZATION, value);
-                // An expired browser session does not hide independently LAN-open shares.
-                return Ok(
-                    auth::authenticate(&api.core, &copy, "GET", &uri.to_string())
-                        .unwrap_or(Principal::Anonymous),
-                );
-            }
+    {
+        let mut copy = headers.clone();
+        if let Ok(value) = format!("Bearer {token}").parse() {
+            copy.insert(header::AUTHORIZATION, value);
+            // An expired browser session does not hide independently LAN-open shares.
+            return Ok(
+                auth::authenticate(&api.core, &copy, "GET", &uri.to_string())
+                    .unwrap_or(Principal::Anonymous),
+            );
         }
     }
     auth::authenticate(&api.core, headers, "GET", &uri.to_string())
@@ -87,6 +87,13 @@ pub fn router(core: Core, lan: LanPolicy) -> Router {
         .route("/v1/shares/{id}/prepare", get(prepare))
         .route("/v1/shares/{id}/file", get(file))
         .layer(DefaultBodyLimit::max(16 * 1024))
+        .layer(axum::middleware::from_fn_with_state(
+            std::sync::Arc::new(tokio::sync::Semaphore::new(64)),
+            |State(slots): State<std::sync::Arc<tokio::sync::Semaphore>>, request: axum::extract::Request, next: axum::middleware::Next| async move {
+                let Ok(_permit) = slots.try_acquire_owned() else { return StatusCode::SERVICE_UNAVAILABLE.into_response(); };
+                next.run(request).await
+            },
+        ))
         .layer(axum::middleware::map_response(|mut response: Response| async {
             let headers = response.headers_mut();
             headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
@@ -180,6 +187,8 @@ async fn guest(
 struct BrowseQuery {
     entry: Option<String>,
     cursor: Option<String>,
+    #[serde(default)]
+    touch: bool,
 }
 
 async fn shares(
@@ -207,6 +216,16 @@ async fn entries(
 ) -> ApiResult<Json<Page<Entry>>> {
     let who = principal(&api, &headers, &uri)?;
     let share = share(&api, &id, &who, address.ip())?;
+    if query.touch {
+        let cursor = query.cursor.ok_or(ApiError(StatusCode::BAD_REQUEST))?;
+        api.core
+            .touch_directory(&id, &cursor, &who)
+            .map_err(|_| ApiError(StatusCode::CONFLICT))?;
+        return Ok(Json(Page {
+            items: Vec::new(),
+            next_cursor: Some(cursor),
+        }));
+    }
     api.core
         .list_entries(
             &share,

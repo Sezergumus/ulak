@@ -314,6 +314,7 @@ async fn folder_download_preserves_nested_hierarchy_without_a_manifest() {
     let (directory, core) = recipient();
     let folder = host._directory.path().join("folder");
     std::fs::create_dir_all(folder.join("nested/deeper")).unwrap();
+    std::fs::create_dir_all(folder.join("empty")).unwrap();
     std::fs::write(folder.join("root.txt"), b"root").unwrap();
     std::fs::write(folder.join("nested/deeper/leaf.txt"), b"leaf").unwrap();
     let share = host.core.add_share(&folder, Audience::Lan).unwrap();
@@ -324,6 +325,7 @@ async fn folder_download_preserves_nested_hierarchy_without_a_manifest() {
         .await
         .unwrap();
     assert_eq!(count, 2);
+    assert!(target.join("empty").is_dir());
     assert_eq!(
         std::fs::read(target.join("nested/deeper/leaf.txt")).unwrap(),
         b"leaf"
@@ -353,5 +355,91 @@ async fn cancellation_remains_resumable_and_never_finalizes_early() {
         .await
         .unwrap();
     assert_eq!(result.state, TransferState::Completed);
+    host.finish().await;
+}
+
+#[tokio::test]
+async fn verified_endpoint_changes_update_the_existing_paired_record() {
+    let host = Host::start().await;
+    let (_directory, recipient) = recipient();
+    let invitation = host.core.invite(&host.remote.endpoint, None).unwrap();
+    NativeClient::pair(recipient.clone(), invitation, "https://127.0.0.1:7444/")
+        .await
+        .unwrap();
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+    let mut changed = host.remote.clone();
+    changed.endpoint = format!("https://{}/", listener.local_addr().unwrap());
+    let stop = CancellationToken::new();
+    let task = tokio::spawn(server::serve_listener(
+        host.core.clone(),
+        listener,
+        vec![Ipv4Addr::LOCALHOST.into()],
+        LanPolicy::default(),
+        stop.clone(),
+    ));
+    let client = NativeClient::new(recipient.clone(), changed.clone()).unwrap();
+    let mut verified = false;
+    for _ in 0..100 {
+        if client.verify().await.is_ok() {
+            verified = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert!(verified);
+    let state = recipient.read();
+    assert_eq!(state.peers.len(), 1);
+    assert_eq!(
+        state.peers[&host.remote.identity.id].remote.endpoint,
+        changed.endpoint
+    );
+    assert!(
+        state.peers[&host.remote.identity.id]
+            .last_connected
+            .is_some()
+    );
+    stop.cancel();
+    task.await.unwrap().unwrap();
+    host.finish().await;
+}
+
+#[tokio::test]
+#[ignore = "Generates a real source and destination; requires at least twice the requested disk space"]
+async fn large_transfer_uses_bounded_generation_and_streaming() {
+    let bytes: u64 = std::env::var("ULAK_LARGE_TEST_BYTES")
+        .unwrap_or_else(|_| "50000000000".into())
+        .parse()
+        .unwrap();
+    let host = Host::start().await;
+    assert!(
+        fs2::available_space(host._directory.path()).unwrap() >= bytes * 2 + 512 * 1024 * 1024,
+        "Insufficient workspace disk space for source and destination fixtures"
+    );
+    let source = host._directory.path().join("large.bin");
+    let mut file = std::fs::File::create(&source).unwrap();
+    let buffer = [0x5au8; 64 * 1024];
+    let mut remaining = bytes;
+    while remaining > 0 {
+        let length = remaining.min(buffer.len() as u64) as usize;
+        file.write_all(&buffer[..length]).unwrap();
+        remaining -= length as u64;
+    }
+    file.sync_all().unwrap();
+    drop(file);
+    let share = host.core.add_share(&source, Audience::Lan).unwrap();
+    let (directory, core) = recipient();
+    let client = NativeClient::new(core.clone(), host.remote.clone()).unwrap();
+    let started = std::time::Instant::now();
+    let info = metadata(&client, &share).await;
+    let result = core
+        .download(client, info, directory.path(), CancellationToken::new())
+        .await
+        .unwrap();
+    assert_eq!(result.state, TransferState::Completed);
+    assert_eq!(std::fs::metadata(result.destination).unwrap().len(), bytes);
+    eprintln!(
+        "Verified {bytes} bytes in {:?}; source generation and transfer use fixed-size buffers",
+        started.elapsed()
+    );
     host.finish().await;
 }

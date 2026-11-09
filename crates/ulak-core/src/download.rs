@@ -177,7 +177,8 @@ impl Core {
             "Transfer already completed"
         );
         ensure!(
-            checkpoint.remote.identity == client.remote.identity,
+            checkpoint.remote.identity.id == client.remote.identity.id
+                && checkpoint.remote.identity.public_key == client.remote.identity.public_key,
             "Cannot resume from another device"
         );
         let parent = checkpoint
@@ -254,6 +255,45 @@ impl Core {
         };
         checkpoint.state = TransferState::Preparing;
         self.save_checkpoint(checkpoint)?;
+        // Reconcile a crash after a successful rename but before its completion
+        // checkpoint. The final target was persisted before the rename attempt.
+        if !checkpoint.partial.exists()
+            && checkpoint.written == checkpoint.file.size
+            && checkpoint.destination.exists()
+        {
+            checkpoint.state = TransferState::Verifying;
+            let mut file = catalog::open_locked(&checkpoint.destination, false)?;
+            ensure!(
+                file.metadata()?.len() == checkpoint.file.size,
+                "Finalized file size mismatch"
+            );
+            let digest = checkpoint.file.digest.clone();
+            let stop = cancellation.clone();
+            let permit = self.0.hashes.clone().acquire_owned().await?;
+            tokio::task::spawn_blocking(move || -> Result<()> {
+                let _permit = permit;
+                let mut buffer = [0; BUFFER_SIZE];
+                let mut hasher = blake3::Hasher::new();
+                loop {
+                    ensure!(!stop.is_cancelled(), "Transfer cancelled");
+                    let length = file.read(&mut buffer)?;
+                    if length == 0 {
+                        break;
+                    }
+                    hasher.update(&buffer[..length]);
+                }
+                ensure!(
+                    hasher.finalize().to_hex().as_str() == digest,
+                    "Finalized file integrity mismatch"
+                );
+                Ok(())
+            })
+            .await??;
+            checkpoint.state = TransferState::Completed;
+            checkpoint.error = None;
+            self.save_checkpoint(checkpoint)?;
+            return Ok(());
+        }
         let current = tokio::select! {
             _ = cancellation.cancelled() => bail!("Transfer cancelled"),
             current = async { client.verify().await?; client.prepare(&checkpoint.file.share_id, &checkpoint.file.entry_id).await } => current?,
@@ -407,10 +447,12 @@ impl Core {
         })
         .await??;
         ensure!(!cancellation.is_cancelled(), "Transfer cancelled");
-        let directory = checkpoint.destination.parent().unwrap();
+        let directory = checkpoint.destination.parent().unwrap().to_path_buf();
         let mut finalized = false;
         for index in 0..10_000 {
-            let target = candidate(directory, &checkpoint.file.name, index);
+            let target = candidate(&directory, &checkpoint.file.name, index);
+            checkpoint.destination = target.clone();
+            self.save_checkpoint(checkpoint)?;
             match finalize(&checkpoint.partial, &target) {
                 Ok(()) => {
                     checkpoint.destination = target;
@@ -445,24 +487,65 @@ impl Core {
         cancellation: CancellationToken,
     ) -> Result<u64> {
         let (directory, _guards) = destination_directory(directory)?;
+        let pending = std::sync::Arc::new(std::sync::Mutex::new(std::collections::BTreeSet::<
+            String,
+        >::new()));
+        let keepalive_pending = pending.clone();
+        let keepalive_client = client.clone();
+        let keepalive_share = share.to_string();
+        let folder_stop = cancellation.child_token();
+        let keepalive_stop = folder_stop.clone();
+        let keepalive = tokio::spawn(async move {
+            loop {
+                tokio::select! { _ = keepalive_stop.cancelled() => break, _ = tokio::time::sleep(Duration::from_secs(30)) => {} }
+                let cursors: Vec<_> = keepalive_pending.lock().unwrap().iter().cloned().collect();
+                for cursor in cursors {
+                    let result: Result<Page<Entry>> = keepalive_client
+                        .get(
+                            &format!("/v1/shares/{keepalive_share}/entries"),
+                            &[("cursor", &cursor), ("touch", "true")],
+                        )
+                        .await;
+                    if result.is_err() && keepalive_pending.lock().unwrap().contains(&cursor) {
+                        keepalive_stop.cancel();
+                        return;
+                    }
+                }
+            }
+        });
+        struct Keepalive(tokio::task::JoinHandle<()>);
+        impl Drop for Keepalive {
+            fn drop(&mut self) {
+                self.0.abort();
+            }
+        }
+        let _keepalive = Keepalive(keepalive);
         let mut stack = vec![(entry.map(str::to_string), directory, None::<String>)];
         let mut count = 0;
         while let Some((entry, target, cursor)) = stack.pop() {
-            ensure!(!cancellation.is_cancelled(), "Folder download cancelled");
+            ensure!(
+                !folder_stop.is_cancelled(),
+                "Folder download cancelled or directory cursor expired"
+            );
             let page = client
                 .entries(share, entry.as_deref(), cursor.as_deref())
                 .await?;
+            if let Some(cursor) = &cursor {
+                pending.lock().unwrap().remove(cursor);
+            }
             if let Some(cursor) = page.next_cursor {
+                pending.lock().unwrap().insert(cursor.clone());
                 stack.push((entry, target.clone(), Some(cursor)));
             }
             for item in page.items {
                 ensure!(catalog::safe_name(&item.name), "Unsafe remote filename");
                 if item.is_dir {
+                    let (child, _child_guards) = destination_directory(&target.join(&item.name))?;
                     ensure!(stack.len() < 4096, "Folder traversal capacity reached");
-                    stack.push((Some(item.id), target.join(item.name), None));
+                    stack.push((Some(item.id), child, None));
                 } else {
                     let info = client.prepare(share, &item.id).await?;
-                    self.download(client.clone(), info, &target, cancellation.child_token())
+                    self.download(client.clone(), info, &target, folder_stop.child_token())
                         .await?;
                     count += 1;
                 }
