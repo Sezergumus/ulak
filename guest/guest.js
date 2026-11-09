@@ -51,4 +51,10 @@ document.querySelector('#invite').onsubmit = async event => {
 };
 document.querySelector('#home').onclick = () => browse();
 more.onclick = () => browse(locationState.share, locationState.entry, true);
-browse();
+const invitationToken = new URLSearchParams(location.hash.slice(1)).get('invite');
+if (invitationToken) {
+  history.replaceState(null, '', location.pathname + location.search);
+  api('/v1/guest/redeem', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: invitationToken }) })
+    .then(() => browse())
+    .catch(error => { status.textContent = error.message; });
+} else browse();
