@@ -108,7 +108,7 @@ pub async fn dispatch(
                 remote = peer.remote.clone();
             }
             let client = NativeClient::new(core.clone(), remote)?;
-            client.verify().await?;
+            // Let the core reconcile a finalized local file before requiring a reachable sender.
             Ok(serde_json::to_value(
                 core.resume(client, &transfer, stop).await?,
             )?)
@@ -205,6 +205,43 @@ pub fn pipe_key(directory: &Path, sid: &str) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn local_resume_recovers_a_finalized_file_without_a_reachable_sender() {
+        let root = tempfile::tempdir().unwrap();
+        let core = Core::open(root.path().join("state"), "Recovery").unwrap();
+        let directory = std::fs::canonicalize(root.path()).unwrap();
+        let destination = directory.join("finished.txt");
+        let bytes = b"already verified and renamed";
+        std::fs::write(&destination, bytes).unwrap();
+        let id = "00000000-0000-4000-8000-000000000001".to_string();
+        core.save_checkpoint(&Checkpoint {
+            id: id.clone(),
+            remote: core.descriptor("https://127.0.0.1:1/").unwrap(),
+            file: FileInfo {
+                share_id: "unreachable".into(),
+                entry_id: "entry".into(),
+                name: "finished.txt".into(),
+                size: bytes.len() as u64,
+                revision: "revision".into(),
+                digest: blake3::hash(bytes).to_hex().to_string(),
+            },
+            partial: directory.join(format!(".ulak-{id}.part")),
+            destination,
+            written: bytes.len() as u64,
+            state: TransferState::Interrupted,
+            error: None,
+            bytes_per_second: 0,
+        })
+        .unwrap();
+        let result = dispatch(
+            &core,
+            Request::Resume { transfer: id },
+            CancellationToken::new(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(result["state"], "completed");
+    }
     #[tokio::test]
     async fn rejects_oversized_frame_before_allocating_payload() {
         let mut frame = &u32::MAX.to_le_bytes()[..];
