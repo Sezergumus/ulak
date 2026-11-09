@@ -1,0 +1,38 @@
+[package]
+name = "ulak-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+async-stream = "0.3"
+axum.workspace = true
+axum-server = { version = "0.7", default-features = false, features = ["tls-rustls-no-provider"] }
+base64.workspace = true
+blake3.workspace = true
+bytes.workspace = true
+chacha20poly1305 = "0.10"
+ed25519-dalek.workspace = true
+futures-util.workspace = true
+ipnet.workspace = true
+mdns-sd.workspace = true
+rand.workspace = true
+rcgen.workspace = true
+reqwest.workspace = true
+rustls.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+uuid.workspace = true
+fs2 = "0.4"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+

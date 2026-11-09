@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members = ["crates/ulak-core", "crates/ulak-agent", "crates/ulak-drag-probe", "src-tauri"]
+default-members = ["crates/ulak-core", "crates/ulak-agent", "crates/ulak-drag-probe"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]
+anyhow = "1"
+axum = "0.8"
+base64 = "0.22"
+blake3 = "1"
+bytes = "1"
+clap = { version = "4", features = ["derive"] }
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+futures-util = "0.3"
+ipnet = { version = "2", features = ["serde"] }
+mdns-sd = "0.17"
+rand = "0.8"
+rcgen = { version = "0.13", features = ["pem", "x509-parser"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream", "blocking"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["io", "rt"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+
