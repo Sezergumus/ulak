@@ -6,7 +6,7 @@ The implementation contract is [context.md](context.md). See [phase status](docs
 
 ## Development
 
-Requires Windows, Visual Studio C++ build tools with the Windows SDK, and Rust. The desktop shell also requires the WebView2 runtime. No Node dependency is required for the phase 2 development console; the React product interface belongs to phase 4.
+Requires Windows, Visual Studio C++ build tools with the Windows SDK, Rust, and Node.js 22.12 or newer. The desktop shell also requires the WebView2 runtime. The desktop uses React 19, TypeScript, Vite, Tailwind, Radix-based UI controls, Lucide, Zustand, and locally bundled QR rendering.
 
 The helper scripts keep the Rust toolchain, Cargo cache, temporary files, state, and build output inside this workspace. They do not modify the system PATH, install certificates, change firewall rules, or write global Git configuration.
 
@@ -14,18 +14,22 @@ The helper scripts keep the Rust toolchain, Cargo cache, temporary files, state,
 # Only needed when the workspace-local toolchain has not been initialized.
 .\scripts\setup-rust.ps1
 
+.\scripts\npm.ps1 ci
+.\scripts\npm.ps1 run build
+.\scripts\npm.ps1 test
 .\scripts\cargo.ps1 build --workspace
 .\scripts\cargo.ps1 test --workspace
 .\scripts\cargo.ps1 clippy --workspace --all-targets '--' -D warnings
 .\scripts\cargo.ps1 fmt --all --check
 .\scripts\smoke.ps1
+.\scripts\desktop-smoke.ps1
 ```
 
-The development and test profiles omit debug symbols and incremental caches to limit disk consumption. Cargo.lock is committed. Generated toolchain/cache files, application state, and target output are ignored by Git.
+The development and test profiles omit debug symbols and incremental caches to limit disk consumption. Both dependency lockfiles are committed. The npm and Rust wrappers keep caches and temporary files inside the workspace. WebView data is stored inside the selected state directory. Generated caches, application state, frontend assets, and target output are ignored by Git. Rebuild the frontend before compiling the desktop; the normal executable embeds the production assets and needs no development server.
 
 ## Local sharing example
 
-Run setup commands while that data directory's server is stopped. The diagnostic runner holds an exclusive lock on its state directory; it does not expose management commands over LAN HTTP. Live local management is available through the Tauri commands. The product CLI's named-pipe integration belongs to phase 4.
+Run these diagnostic setup commands while that data directory's server is stopped. The diagnostic runner holds an exclusive lock on its state directory; it does not expose management commands over LAN HTTP. Use the desktop or product CLI below for live local management.
 
 ```powershell
 # Use two different state directories to simulate two PCs on this machine.
@@ -55,27 +59,45 @@ For actual LAN use, bind to the intended interface, advertise its reachable HTTP
 
 Optional `serve --onboarding ADDRESS:PORT` runs a separate plaintext setup server exposing only instructions and the public CA certificate. Compare the displayed CA fingerprint against the host before installing it. Shared content is available only over trusted HTTPS. Device certificate installation is manual; a QR code or invitation cannot bypass it.
 
-## Desktop development console
+## Desktop application
 
 ```powershell
-.\scripts\cargo.ps1 run -p ulak-desktop
+.\scripts\desktop.ps1
 ```
 
-The Tauri v2 shell hosts the same core and provides a local command console for phases 1–3. It exposes snapshots, server startup, share/audience changes, invitations, pairing, remote browsing, downloads, cancellation, resume, and revocation through Tauri IPC. It is a development surface; sidebar layouts, native pickers, tray lifecycle, and polished product screens belong to phase 4.
+The compact desktop opens on Devices, with My shares and Transfers in the sidebar, a selected-item detail panel, and a persistent transfer status area. `Ctrl+K` opens contextual commands. Paired devices remain visible and selectable while offline; live discovery appears separately and does not establish trust. Reachability is checked through signed identity verification, including stored endpoints when multicast is unavailable.
 
-Example `start_server` arguments:
+Use Add share, Add folder, or an Explorer drop to select sources, then explicitly choose private/guest access, selected paired devices, or Everyone on the local network. The audience picker keeps offline peers enabled. Share details offer guest invitations, QR codes, certificate export/fingerprint comparison, session revocation, audience changes, and removal. Each multi-source publication is persisted independently; a failure shows the error and preserves the successful subset for retry.
 
-```json
-{"endpoint":"https://127.0.0.1:7443/","bind":"127.0.0.1:7443","lan":["127.0.0.1/32"]}
+Connection settings persist the device name, advertised HTTPS origin, listen address, allowed network ranges, optional public certificate setup listener, and mDNS preference. The initial service binds only to `127.0.0.1:7443`. Configure reachable interface addresses before connecting actual PCs or phones. Invalid settings are rejected before stopping the listener; bind failures attempt to restore the previous configuration. No firewall or certificate trust settings are changed automatically.
+
+Browse a paired device, or paste a trusted public descriptor to browse LAN-open shares without pairing. Remote directory pages remain bounded. Native downloads use the destination picker; folders preserve their hierarchy. Select up to four files per desktop batch. Preparation occurs before a per-file checkpoint exists, then core-owned queue/state snapshots and events expose progress, verification, completion, cancellation, and explicit resume. Closing or reloading the view does not become transfer authority. Folder orchestration is not persisted as a separate job; per-file checkpoints remain resumable.
+
+For Explorer drag-out, select remote files, choose Prepare Explorer drag, then drag from the displayed handle while holding the left button. This prepares metadata and lazily supplies range-backed COM streams without downloading complete files first. Folders use the native downloader instead. Actual Explorer copy/progress/cancellation interoperability still needs interactive acceptance testing.
+
+Closing the main window hides it while the service remains active. Use the tray's Open Ulak action to reopen it and Quit Ulak to stop it. The command menu also provides Hide to tray and Quit Ulak. Runtime state defaults to `.ulak/desktop` under the working directory, or the explicit `ULAK_DATA_DIR` path. Keep project runs and their selected test destinations inside this workspace.
+
+`scripts/desktop-smoke.ps1` starts an isolated real WebView instance with temporary local debugging, exercises the production UI and live CLI, captures screenshots under `.tools`, checks close-to-tray service continuity and programmatic reopening, and explicitly quits its own process. It also tests invalid network settings and rollback after an occupied-port failure. This does not exercise native picker interactions, actual Explorer drops, or clicking the tray icon/menu.
+
+## Live local CLI
+
+The `ulak` product CLI connects to the running desktop through a Windows named pipe scoped to the canonical data directory and current-user SID. Its protected DACL grants only that user access; remote pipe clients are rejected. The server accepts at most eight live requests, limits request/response frames, and exposes no LAN or localhost management endpoint. The CLI does not open or lock the desktop's private state.
+
+```powershell
+$ulak = '.\target\debug\ulak.exe'
+& $ulak status
+& $ulak share '.\selected-file.txt' --lan
+& $ulak share '.\selected-folder' --device PAIRED_DEVICE_ID
+& $ulak list --remote '.\trusted-connection.json'
+& $ulak list --remote '.\trusted-connection.json' --share SHARE_ID
+& $ulak download --remote '.\trusted-connection.json' --share SHARE_ID --entry ENTRY_ID --destination '.\downloads'
+& $ulak download-folder --remote '.\trusted-connection.json' --share SHARE_ID --destination '.\downloads\folder'
+& $ulak cancel TRANSFER_ID
+& $ulak resume TRANSFER_ID
+& $ulak remove SHARE_ID
 ```
 
-Example `add_share` arguments:
-
-```json
-{"source":"C:\\path\\to\\example.txt","audience":{"kind":"lan"}}
-```
-
-The window reads a fresh snapshot on demand and emits throttled transfer events. Persistent Rust state remains authoritative. Runtime state defaults to `.ulak/desktop` under the working directory, or the explicit `ULAK_DATA_DIR` path.
+Without `--lan` or `--device`, a new share is private. Use `--data` before the subcommand when the desktop uses a different workspace-contained state directory. Download commands wait for their verified result. Closing the CLI alone does not cancel a dispatched transfer; use the explicit cancel command. Export a public connection descriptor from Connection settings and exchange it with the intended recipient through a trusted channel.
 
 ## Limits and guarantees
 

@@ -7,4 +7,4 @@ Before continuing work, read [HANDOFF.md](HANDOFF.md), [context.md](context.md),
 - Commit each meaningful, verified change separately with a descriptive English commit message. Preserve unrelated user changes.
 - Keep implementation and measured validation distinct. Never mark physical-device, Explorer, or large-transfer acceptance checks passed without actually exercising them.
 - Follow the architecture contract, especially explicit share audiences, persistent device identity, bounded streaming, source references without staging, and platform-specific destination guarantees.
-- The next proposed milestone is phase 4. The previous session completed phases 1–3 code/prototypes with outstanding hardware checks; phase 4 has not yet been explicitly requested. Resume according to the user's next instruction.
+- The user explicitly requested phase 4, and its desktop/CLI implementation is present. Hardware, native dialog, Explorer, and tray interaction checks remain open as recorded in the handoff. Phase 5 has not been requested; resume according to the user's next instruction.
