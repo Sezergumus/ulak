@@ -27,6 +27,7 @@ async fn start_server(
     endpoint: String,
     bind: String,
     lan: Vec<String>,
+    advertise: Option<bool>,
 ) -> CommandResult<()> {
     let mut serving = runtime.serving.lock().unwrap();
     if *serving {
@@ -49,8 +50,14 @@ async fn start_server(
     let core = runtime.core.clone();
     let signal = runtime.stop.child_token();
     let listener = std::net::TcpListener::bind(address).map_err(error)?;
+    let advertisement = if advertise.unwrap_or(false) {
+        Some(ulak_core::discovery::Advertisement::start(&core, address, &[ip]).map_err(error)?)
+    } else {
+        None
+    };
     *serving = true;
     tauri::async_runtime::spawn(async move {
+        let _advertisement = advertisement;
         if let Err(failure) = server::serve_listener(
             core,
             listener,
@@ -65,6 +72,25 @@ async fn start_server(
         *app.state::<Runtime>().serving.lock().unwrap() = false;
     });
     Ok(())
+}
+
+#[tauri::command]
+async fn discover(
+    runtime: State<'_, Runtime>,
+) -> CommandResult<Vec<ulak_core::discovery::Discovered>> {
+    ulak_core::discovery::browse_verified(&runtime.core, std::time::Duration::from_secs(5))
+        .await
+        .map_err(error)
+}
+
+#[tauri::command]
+fn connection_descriptor(runtime: State<Runtime>, endpoint: String) -> CommandResult<Remote> {
+    runtime.core.descriptor(&endpoint).map_err(error)
+}
+
+#[tauri::command]
+fn export_ca(runtime: State<Runtime>, destination: String) -> CommandResult<()> {
+    std::fs::write(destination, runtime.core.read().ca_pem).map_err(error)
 }
 #[tauri::command]
 fn add_share(runtime: State<Runtime>, source: String, audience: Audience) -> CommandResult<Share> {
@@ -208,6 +234,9 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             snapshot,
+            discover,
+            connection_descriptor,
+            export_ca,
             start_server,
             add_share,
             set_audience,

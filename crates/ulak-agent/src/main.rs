@@ -92,9 +92,11 @@ enum Command {
         seconds: u64,
     },
     Ping {
+        #[arg(long)]
         remote: PathBuf,
     },
     Browse {
+        #[arg(long)]
         remote: PathBuf,
         #[arg(long)]
         share: Option<String>,
@@ -104,12 +106,14 @@ enum Command {
         cursor: Option<String>,
     },
     Download {
+        #[arg(long)]
         remote: PathBuf,
         share: String,
         entry: String,
         destination: PathBuf,
     },
     DownloadFolder {
+        #[arg(long)]
         remote: PathBuf,
         share: String,
         destination: PathBuf,
@@ -117,6 +121,7 @@ enum Command {
         entry: Option<String>,
     },
     Resume {
+        #[arg(long)]
         remote: PathBuf,
         transfer: String,
     },
@@ -266,7 +271,7 @@ async fn main() -> Result<()> {
         Command::Unpair { device } => core.revoke_peer(&device)?,
         Command::RevokeGuest { session } => core.revoke_session(&session)?,
         Command::Discover { seconds } => {
-            print(&discovery::browse(&core, Duration::from_secs(seconds)).await?)?
+            print(&discovery::browse_verified(&core, Duration::from_secs(seconds)).await?)?
         }
         Command::Ping { remote: path } => {
             print(&NativeClient::new(core, remote(&path)?)?.verify().await?)?
