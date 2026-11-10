@@ -197,7 +197,10 @@ impl NativeClient {
     }
 }
 
-async fn bounded_json<T: DeserializeOwned>(response: reqwest::Response, limit: usize) -> Result<T> {
+pub(crate) async fn bounded_json<T: DeserializeOwned>(
+    response: reqwest::Response,
+    limit: usize,
+) -> Result<T> {
     use futures_util::StreamExt;
     let mut stream = response.error_for_status()?.bytes_stream();
     let mut bytes = Vec::new();

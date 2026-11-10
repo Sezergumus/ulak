@@ -14,6 +14,10 @@ mDNS uses `_ulak._tcp.local.` and supplies untrusted endpoint candidates. Discov
 | --- | --- |
 | `GET /v1/hello?challenge=...` | Protocol version, capabilities, identity, signed caller challenge |
 | `POST /v1/pair` | Redeem single-use pairing invitation with recipient identity proof |
+| `GET /v1/pairing/identity` | Public, untrusted descriptor bootstrap for nearby pairing, limited to allowed source networks |
+| `POST /v1/pairing/start` | Signed request binding both full descriptors and the initiator's nonce commitment |
+| `POST /v1/pairing/reveal` | Reveal the initiator's committed nonce and receive the responder's signed nonce |
+| `POST /v1/pairing/check` | Signed status/approval for this pending session, with a fresh response challenge |
 | `POST /v1/guest/redeem` | Redeem a single-use scoped guest token for a secure cookie |
 | `GET /v1/shares?cursor=...` | Page through authorized shares |
 | `GET /v1/shares/{id}/entries?entry=...&cursor=...` | Page immediate directory children; entry omitted for share root |
@@ -29,7 +33,19 @@ Restricted device reads carry `X-Ulak-Device`, `X-Ulak-Time`, `X-Ulak-Nonce`, an
 
 Guest sessions use a Secure, HttpOnly, SameSite=Strict cookie or a bearer token for core clients. Invitations are stored as hashed credentials, expire after five minutes, and are consumed transactionally with creation of the peer/session. Guest sessions are scoped to share IDs, expire after 30 minutes of inactivity or eight hours total, and can be revoked locally. Session status, share audiences, and pairing trust are persisted atomically under an exclusive process lock.
 
-The LAN-open policy permits anonymous reads only for shares explicitly marked `lan`, and only when the socket's source address is in a configured allowed range. Forwarded headers do not establish LAN membership. Listing, metadata, and byte-range requests all apply the same policy. A LAN-open reader cannot manage shares, pair itself without an invitation, or access restricted content.
+The LAN-open policy permits anonymous reads only for shares explicitly marked `lan`, and only when the socket's source address is in a configured allowed range. Forwarded headers do not establish LAN membership. Listing, metadata, and byte-range requests all apply the same policy. A LAN-open reader cannot manage shares, pair itself without an invitation or explicit nearby comparison approval, or access restricted content.
+
+## Nearby numeric comparison
+
+The desktop can discover a device, request pairing, and display the same six-digit comparison number on both computers. Users must compare the numbers and explicitly approve on both sides. Finding a device or retrieving its descriptor grants no trust or share access. Manual single-use invitations remain an alternative when discovery is unavailable.
+
+Only the public pairing-identity bootstrap request uses a separate TLS client that accepts an untrusted certificate. That client disables proxies and redirects, has a five-second deadline, reads at most 16 KiB, and is never used for file access or subsequent pairing messages. The returned descriptor must match the selected discovery ID and endpoint. The client then pins the offered CA, checks TLS/IP and a fresh signed identity challenge, and performs the comparison handshake. This provisional verification is not persisted as trust.
+
+The initiator signs both full descriptors, its timestamp, and a BLAKE3 commitment to a random 256-bit nonce. The responder fixes its own independent 256-bit nonce commitment in a signed offer binding that request, a random session ID, and expiration. Only after verifying that offer does the initiator reveal its nonce with a transcript-bound signature. The responder verifies the commitment before revealing its own signed nonce. Both endpoints derive the comparison number from the complete canonical transcript and both nonces, with domain separation. Commit-before-reveal prevents choosing nonce material after observing the other endpoint's revealed value; short authentication comparisons require this protection ([RFC 6189, section 4.4.1.1](https://www.rfc-editor.org/rfc/rfc6189.html#section-4.4.1.1)). This is an application-specific pairing protocol, not an implementation of ZRTP.
+
+Local approval is available only after valid nonce proofs. The requester signs its session-specific approval; the responder persists the peer only after both approvals. The requester persists the responder after a fresh, signed paired response and its own local approval. Rejection is terminal. Completed sessions cannot restore a subsequently revoked peer by replay, and existing CA trust cannot be replaced by discovery. Pairing changes no share audiences. A network failure or process exit during final confirmation can leave one side paired; the user can forget that device and retry. Pending sessions are not restored after restart.
+
+Pending sessions expire after approximately two minutes, with 16 entries per core, two concurrent outgoing handshake slots, four concurrent status checks, five starts per source address per minute, 64 rate buckets, and 128 replay records. Pairing routes check the actual socket source against the configured allowed networks, enforce same-origin browser requests, and inherit HTTP body/handler limits. Changing or stopping the listener clears pending sessions. The comparison requires human confirmation and still needs physical-device acceptance and independent protocol review; passing functional tests is not a security audit.
 
 ## Transfer behavior
 

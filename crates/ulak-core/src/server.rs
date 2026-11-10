@@ -81,6 +81,10 @@ pub fn router(core: Core, lan: LanPolicy) -> Router {
         .route("/guest.js", get(|| async { ([(header::CONTENT_TYPE, "text/javascript; charset=utf-8")], include_str!("../../../guest/guest.js")) }))
         .route("/v1/hello", get(hello))
         .route("/v1/pair", post(pair))
+        .route("/v1/pairing/identity", get(pairing_identity))
+        .route("/v1/pairing/start", post(pairing_start))
+        .route("/v1/pairing/reveal", post(pairing_reveal))
+        .route("/v1/pairing/check", post(pairing_check))
         .route("/v1/guest/redeem", post(guest))
         .route("/v1/shares", get(shares))
         .route("/v1/shares/{id}/entries", get(entries))
@@ -151,6 +155,61 @@ fn check_origin(headers: &HeaderMap) -> ApiResult<()> {
         }
     }
     Ok(())
+}
+
+fn pairing_scope(api: &Api, address: SocketAddr, headers: &HeaderMap) -> ApiResult<()> {
+    check_origin(headers)?;
+    if !api.lan.contains(address.ip()) {
+        return Err(ApiError(StatusCode::FORBIDDEN));
+    }
+    Ok(())
+}
+async fn pairing_identity(
+    State(api): State<Api>,
+    ConnectInfo(address): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+) -> ApiResult<Json<Remote>> {
+    pairing_scope(&api, address, &headers)?;
+    api.core
+        .pairing_identity()
+        .map(Json)
+        .map_err(|_| ApiError(StatusCode::NOT_FOUND))
+}
+async fn pairing_start(
+    State(api): State<Api>,
+    ConnectInfo(address): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Json(request): Json<crate::pairing::Start>,
+) -> ApiResult<Json<crate::pairing::Offer>> {
+    pairing_scope(&api, address, &headers)?;
+    api.core
+        .receive_pairing_start(request, address.ip())
+        .map(Json)
+        .map_err(|_| ApiError(StatusCode::BAD_REQUEST))
+}
+async fn pairing_reveal(
+    State(api): State<Api>,
+    ConnectInfo(address): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Json(request): Json<crate::pairing::Reveal>,
+) -> ApiResult<Json<crate::pairing::Reveal>> {
+    pairing_scope(&api, address, &headers)?;
+    api.core
+        .receive_pairing_reveal(request)
+        .map(Json)
+        .map_err(|_| ApiError(StatusCode::BAD_REQUEST))
+}
+async fn pairing_check(
+    State(api): State<Api>,
+    ConnectInfo(address): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Json(request): Json<crate::pairing::Check>,
+) -> ApiResult<Json<crate::pairing::Reply>> {
+    pairing_scope(&api, address, &headers)?;
+    api.core
+        .receive_pairing_check(request)
+        .map(Json)
+        .map_err(|_| ApiError(StatusCode::BAD_REQUEST))
 }
 
 async fn pair(

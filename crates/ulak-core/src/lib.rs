@@ -5,6 +5,7 @@ pub mod discovery;
 pub mod download;
 pub mod identity;
 pub mod model;
+pub mod pairing;
 pub mod server;
 pub mod storage;
 

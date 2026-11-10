@@ -23,6 +23,8 @@ pub struct Inner {
     pub digest_cache: Mutex<HashMap<String, String>>,
     pub directories: Mutex<HashMap<String, crate::catalog::DirectoryCursor>>,
     pub checkpoint_lock: Mutex<()>,
+    pub pairing: Mutex<crate::pairing::Pairings>,
+    pub pairing_slots: Semaphore,
     _lock: File,
 }
 
@@ -123,6 +125,8 @@ impl Core {
             digest_cache: Default::default(),
             directories: Default::default(),
             checkpoint_lock: Default::default(),
+            pairing: Default::default(),
+            pairing_slots: Semaphore::new(2),
             _lock: lock,
         }));
         for mut checkpoint in core.checkpoints()? {
