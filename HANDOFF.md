@@ -1,6 +1,24 @@
 # Session handoff
 
-Recorded on 2026-11-09 for continuation in a new conversation.
+Updated on 2026-11-10 for continuation in a new conversation. The earlier phase and compact-layout results below retain their original scope.
+
+## Latest request: plain English and simpler connections
+
+The user asked whether local-network discovery is automatic, requested everyday English throughout the application and no Turkish project text, asked what the public CA fingerprint means, and requested easier device pairing. This continuation started from clean `main` at `9594daa`, with no remote. Implementation is committed in `a060cf3`; inspect Git for the current documentation commit and state.
+
+- Discovery already ran at startup, on window focus, and every 30 seconds. The UI now explains this. It finds advertising Ulak devices, not every computer/phone or available Wi-Fi network. The initial saved configuration on this workstation remains loopback-only; no live network permissions or system settings were changed.
+- Connection settings now offer active Windows Wi-Fi/Ethernet adapters. A bounded `GetAdaptersAddresses` query supplies each IPv4 address and actual prefix; selecting one proposes its address, subnet, and mDNS advertisement before Apply settings. Advanced settings retain custom/IPv6/VPN addresses, allowed ranges, certificate setup, public exports, and the discovery switch.
+- Connect a device now includes I have an invitation / Create an invitation in one dialog, a copy action with manual-copy fallback, an expiry notice, and first-run network guidance. Discovered candidates carry their identity into the dialog, which rejects invitations/public connection records for another device. No discovery candidate is trusted automatically. Native TLS and identity verification and high-entropy single-use invitations are unchanged.
+- Ordinary labels now use Saved devices, Choose devices, Invitation only, Start sharing, Checking file, Downloaded, Get ready to drag, and End access. Device IDs, connection internals, and diagnostic errors are expandable. Dates explicitly use English formatting. Comments, authored UI copy, and documentation remain English; a tracked/hidden-source scan excluding generated/runtime directories found no Turkish-character text. User-supplied names, paths, and operating-system data are not translated.
+- The public CA fingerprint is called Security code for browser setup in the product. Guest instructions explain comparing that code before certificate installation. The public setup page and bundled browser page use plain English. Native PC pairing does not require manual fingerprint comparison. These are copy changes to existing guest capabilities, not completion of phase 5 or real-phone onboarding acceptance.
+
+Measured validation for this change:
+
+- Frontend production build and all 13 frontend tests passed. Six new tests cover invitation creation/copy, native pairing dispatch, selected-device mismatch rejection, native invitation rejection, loopback setup guidance, and applying the actual adapter subnet only after saving.
+- `test -p ulak-desktop -p ulak-core`: 25 passed, one large-transfer test ignored. Includes the existing real-HTTPS pairing/security/transfer tests and a new subnet calculation test. The full workspace test suite and large-transfer fixture were not rerun for this change.
+- `clippy -p ulak-desktop -p ulak-core --all-targets '--' -D warnings`, formatting, whitespace, JavaScript syntax, and `build -p ulak-desktop` passed.
+- Native WebView smoke passed Windows adapter enumeration, proposed settings without applying them, the new connection dialogs and loopback guidance, keyboard navigation, 1080/820-pixel list layouts, share audience changes, guest redemption/replay rejection, secure LAN-open browsing, matching browser setup code, verified CLI download, close-to-tray continuity, reopening, and explicit quit. Artifacts: `.tools/desktop-smoke-281675aba8304beea5ac15fff78f1c6f`. Connection settings, connection dialog, Devices, and audience screenshots were inspected. Invitation copy and join are covered by frontend tests; real two-PC pairing and interactive clipboard transfer remain unmeasured.
+- The isolated smoke window was intentionally quit. The normal desktop was rebuilt and reopened using its existing `.ulak/desktop` state for review. Its original share, device name, permissions, and network configuration were preserved. Physical second-PC/multicast, real phones, native pickers, actual Explorer and tray interaction, and large-transfer acceptance remain open as listed below. User visual acceptance remains pending.
 
 ## Workspace and collaboration preferences
 

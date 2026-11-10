@@ -232,6 +232,10 @@ ulak/
 - The audience picker lists all paired devices with checkboxes and online/offline status, and offers **Pair a new device**. Offline status does not disable granting access. Newly discovered devices must be paired before receiving identity-specific grants; LAN-open access remains a separate audience choice.
 - Show access information directly on share rows, such as **2 devices**, **1 guest session**, or **Everyone on the local network**, and expose the actual recipients in details. Keep device identity and access scope visible without requiring users to understand IP addresses.
 - Provide step-by-step guest certificate onboarding, invitation/QR display, and session revocation within the guest-access flow. Keep browser onboarding accurate about certificate trust requirements.
+- Use plain English throughout authored product text, source comments, and documentation. Describe downloads as Waiting, Getting ready, Downloading, Checking file, and Downloaded while preserving the underlying core state distinctions. Put diagnostic errors and connection internals in expandable details.
+- Keep native PC connection in one dialog with **I have an invitation** and **Create an invitation**, including a copy action. An invitation from a different identity than the selected discovery candidate must be rejected. Keep high-entropy, expiring, single-use invitations and native identity verification; simplify presentation without trusting network advertisements.
+- Provide an explicit Wi-Fi/Ethernet choice using active Windows adapter addresses and their real prefixes. Propose settings before applying them, keep the loopback default until the user applies a selection, and retain custom connection fields under Advanced settings. Explain automatic Ulak discovery and distinguish it from an inventory of the whole network.
+- Call the public certificate fingerprint **Security code for browser setup** in the product. Explain its comparison step where browser guests install the certificate; native PC pairing does not require users to handle this code.
 
 ---
 

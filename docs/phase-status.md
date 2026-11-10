@@ -2,6 +2,14 @@
 
 Recorded on 2026-11-09. Automated results below were obtained on Windows using workspace-local Rust 1.99.1. Hardware-dependent checks are listed separately and are not marked passed by implementation alone.
 
+## Plain-English connection revision — 2026-11-10
+
+The desktop now explains automatic Ulak discovery, offers an explicit Wi-Fi/Ethernet picker using Windows adapter addresses and actual subnets, keeps custom fields under Advanced settings, and combines invitation creation/copy and joining in Connect a device. Discovery candidates remain untrusted, and a connection record for a different selected device is rejected. Initial loopback defaults and server-authoritative share permissions are preserved. The certificate fingerprint is presented as Security code for browser setup with comparison instructions in the existing guest flow; native pairing does not require entering it. Authored product strings are plain English, technical errors are expandable, and transfer labels still distinguish checking a file from successful completion.
+
+Validation for this revision: frontend production build and 13 frontend tests passed; targeted desktop/core Rust tests passed 25 tests with the large fixture ignored; targeted desktop/core Clippy, formatting, whitespace, and JavaScript syntax checks passed; the production desktop executable built successfully. Existing full-workspace results below belong to the earlier validation.
+
+The real WebView smoke passed adapter enumeration and unapplied network proposals, connection dialogs and loopback guidance, keyboard navigation, 1080/820-pixel layouts, audience changes, guest redemption/replay rejection, verified LAN-open browsing, the browser setup security code, live CLI download/content comparison, close-to-tray continuity, reopening, and explicit quit. Screenshots were inspected under `.tools/desktop-smoke-281675aba8304beea5ac15fff78f1c6f`. Invitation creation/copy/join and wrong-device rejection were tested in the frontend with mocked native commands; the existing core tests exercise real HTTPS pairing. Actual two-PC pairing, cross-device clipboard exchange, and phone certificate setup were not exercised. Hardware, Explorer, native picker, tray interaction, and large-transfer acceptance remain pending. Visual acceptance belongs to the user.
+
 | Phase | Implemented | Validation status |
 | --- | --- | --- |
 | 1: Feasibility | HTTPS/public-CA setup listeners, bundled browser file-access prototype, Windows OLE virtual-file drag executable with lazy range-backed streams | Local HTTPS and COM metadata/read/seek/clone tests passed. Real iOS/Android trust setup and interactive Explorer drops remain pending. |
