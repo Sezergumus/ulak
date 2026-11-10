@@ -4,6 +4,13 @@ use tauri::{Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use ulak_core::{Core, auth::LanPolicy, client::NativeClient, identity, model::*, server};
 
+mod network;
+
+#[tauri::command]
+fn network_choices() -> CommandResult<Vec<network::NetworkChoice>> {
+    network::choices()
+}
+
 struct Runtime {
     core: Core,
     stop: tokio_util::sync::CancellationToken,
@@ -770,6 +777,7 @@ fn main() {
             drag_out,
             stop_server,
             apply_network,
+            network_choices,
             quit_app,
             discover,
             connection_descriptor,

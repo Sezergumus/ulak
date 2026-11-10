@@ -5,7 +5,7 @@ const more = document.querySelector('#more');
 let locationState = { share: null, entry: null, cursor: null };
 async function api(path, options) {
   const response = await fetch(path, options);
-  if (!response.ok) throw new Error(`Request failed (${response.status}). Check access or reopen the folder.`);
+  if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? 'Access is unavailable. Ask the owner for a new invitation or permission to this share.' : 'Could not open these files. Check that Ulak is still open on the other computer, then try again.');
   return response.json();
 }
 async function browse(share = null, entry = null, append = false) {
@@ -25,12 +25,12 @@ async function browse(share = null, entry = null, append = false) {
       row.append(button); list.append(row);
     }
     more.hidden = !data.next_cursor;
-    status.textContent = list.children.length ? '' : 'No accessible shares or files.';
+    status.textContent = list.children.length ? '' : 'No files are shared with you here.';
   } catch (error) { status.textContent = error.message; }
 }
 async function download(share, item) {
   try {
-    status.textContent = 'Preparing and verifying source metadata…';
+    status.textContent = 'Getting your download ready…';
     const query = new URLSearchParams({ entry: item.id });
     const info = await api(`/v1/shares/${encodeURIComponent(share)}/prepare?${query}`);
     query.set('revision', info.revision);

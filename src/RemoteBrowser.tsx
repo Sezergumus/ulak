@@ -9,6 +9,7 @@ import {
   LoaderCircle,
 } from "lucide-react";
 import { Button } from "./components/ui/button";
+import { ErrorNotice } from "./components/ErrorNotice";
 import { command, request } from "./store";
 import { size, type Entry, type Page, type Remote } from "./types";
 type Location = {
@@ -176,7 +177,7 @@ export function RemoteBrowser({
             disabled={!selection.length || loading}
             onClick={() => run(prepare)}
           >
-            Prepare Explorer drag
+            Get ready to drag
           </Button>
         </div>
       )}
@@ -198,7 +199,7 @@ export function RemoteBrowser({
                 setReady(false);
                 if (!copied)
                   setError(
-                    "Explorer drag cancelled. Prepare the selection to try again.",
+                    "Copy cancelled. Click Get ready to drag to try again.",
                   );
               });
             }
@@ -216,7 +217,7 @@ export function RemoteBrowser({
                 setReady(false);
                 if (!copied)
                   setError(
-                    "Explorer drag cancelled. Prepare the selection to try again.",
+                    "Copy cancelled. Click Get ready to drag to try again.",
                   );
               });
             }
@@ -228,12 +229,13 @@ export function RemoteBrowser({
       {loading ? (
         <p className="quiet">
           <LoaderCircle size={18} className="spin" />
-          Loading permitted content…
+          Loading shared files…
         </p>
       ) : error ? (
-        <p className="inline-error" role="alert">
-          {error}
-        </p>
+        <ErrorNotice
+          error={error}
+          message="Could not open these files. Keep Ulak open on the other computer and try again."
+        />
       ) : (
         <>
           {!!visibleItems.length && (
@@ -305,7 +307,7 @@ export function RemoteBrowser({
             <p className="quiet">
               {query
                 ? `No files match “${query}” on this page.`
-                : "No accessible content in this location."}
+                : "No shared files here."}
             </p>
           )}
           <div className="pagination">

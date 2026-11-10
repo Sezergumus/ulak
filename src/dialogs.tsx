@@ -1,10 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "./components/ui/button";
 import { Dialog } from "./components/ui/dialog";
+import { ErrorNotice } from "./components/ErrorNotice";
 import { command, request, useStore } from "./store";
-import { guestLink } from "./invitations";
-import type { Audience, LocalShare, Network, Remote } from "./types";
+import { guestLink, readInvitation } from "./invitations";
+import {
+  localOnly,
+  type Audience,
+  type Discovered,
+  type LocalShare,
+  type Network,
+  type NetworkChoice,
+  type Remote,
+} from "./types";
 export function ShareDialog({
   sources,
   existing,
@@ -64,7 +73,7 @@ export function ShareDialog({
       description={
         existing
           ? `Manage access to ${existing.share.name}`
-          : `${sources.length} selected source(s). Files stay at their original locations.`
+          : `${sources.length} item${sources.length === 1 ? "" : "s"} selected. Files stay where they are.`
       }
     >
       {!existing && (
@@ -88,8 +97,10 @@ export function ShareDialog({
             onChange={() => setKind("private")}
           />
           <span>
-            <b>Private / guest access</b>
-            <small>Create a scoped guest invitation from share details.</small>
+            <b>Invitation only</b>
+            <small>
+              Only you can access this until you invite a browser guest.
+            </small>
           </span>
         </label>
         <label className={kind === "devices" ? "chosen" : ""}>
@@ -100,8 +111,10 @@ export function ShareDialog({
             onChange={() => setKind("devices")}
           />
           <span>
-            <b>Selected paired devices</b>
-            <small>Offline devices can receive access for later.</small>
+            <b>Choose devices</b>
+            <small>
+              Devices that are offline can download when they reconnect.
+            </small>
           </span>
         </label>
         {kind === "devices" && (
@@ -111,7 +124,7 @@ export function ShareDialog({
               variant="ghost"
               onClick={() => setDevices(Object.keys(data?.peers ?? {}))}
             >
-              Select all paired devices
+              Select all devices
             </Button>
             {Object.values(data?.peers ?? {}).map((peer) => (
               <label key={peer.remote.identity.id}>
@@ -139,13 +152,10 @@ export function ShareDialog({
               </label>
             ))}
             {!Object.keys(data?.peers ?? {}).length && (
-              <p className="hint">
-                No paired devices yet. Close this dialog and use Connect a
-                device.
-              </p>
+              <p className="hint">Connect a device to add it to this list.</p>
             )}
             <Button type="button" variant="ghost" onClick={onPairNew}>
-              Pair a new device
+              Connect a new device
             </Button>
           </div>
         )}
@@ -159,16 +169,16 @@ export function ShareDialog({
           <span>
             <b>Everyone on the local network</b>
             <small>
-              Any device in the configured allowed network can read this share
-              without an invitation.
+              Anyone on your chosen network can browse and download these files.
             </small>
           </span>
         </label>
       </fieldset>
       {error && (
-        <p className="inline-error" role="alert">
-          {error}
-        </p>
+        <ErrorNotice
+          error={error}
+          message="Could not save sharing access. Check that the files are still available, then try again."
+        />
       )}
       <div className="dialog-actions">
         <Button disabled={busy} onClick={onClose}>
@@ -179,7 +189,7 @@ export function ShareDialog({
           disabled={busy || (kind === "devices" && !devices.length)}
           onClick={() => void submit()}
         >
-          {busy ? "Saving…" : existing ? "Save access" : "Publish share"}
+          {busy ? "Saving…" : existing ? "Save access" : "Start sharing"}
         </Button>
       </div>
     </Dialog>
@@ -189,30 +199,97 @@ export function ShareDialog({
 export function ConnectDialog({
   onClose,
   onRemote,
+  target,
+  initialMode = "receive",
+  onNetwork,
 }: {
   onClose: () => void;
   onRemote: (remote: Remote) => void;
+  target?: Discovered;
+  initialMode?: "receive" | "create";
+  onNetwork: () => void;
 }) {
   const { data, refresh } = useStore();
-  const [mode, setMode] = useState<"pair" | "public">("pair");
+  const [mode, setMode] = useState(initialMode);
   const [text, setText] = useState("");
+  const [invitation, setInvitation] = useState("");
+  const [createdAt, setCreatedAt] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  const [copied, setCopied] = useState(false);
+  const [publicText, setPublicText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const needsNetwork = !!data && localOnly(data.network);
+  useEffect(() => {
+    if (!invitation) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [invitation]);
+  const expired = !!invitation && now - createdAt >= 5 * 60_000;
+  const create = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const value = await command<string>("invitation", {
+        endpoint: data?.network.endpoint,
+      });
+      setInvitation(value);
+      setCreatedAt(Date.now());
+      setNow(Date.now());
+      setCopied(false);
+    } catch (error) {
+      setError(String(error));
+    } finally {
+      setBusy(false);
+    }
+  };
   const connect = async () => {
     setBusy(true);
     setError("");
     try {
-      if (mode === "pair") {
-        await command("pair", {
-          invitation: text.trim(),
-          endpoint: data?.network.endpoint,
-        });
-        await refresh();
-      } else {
-        const remote: Remote = JSON.parse(text);
-        await command("verify_peer", { remote });
-        onRemote(remote);
+      let host: Remote;
+      try {
+        host = readInvitation(text.trim()).host;
+      } catch {
+        throw new Error(
+          "This invitation could not be read. Paste the full invitation from the other computer.",
+        );
       }
+      if (target && host.identity.id !== target.id) {
+        throw new Error(
+          `This invitation belongs to a different device. Ask ${target.name} for a new invitation.`,
+        );
+      }
+      await command("pair", {
+        invitation: text.trim(),
+        endpoint: data?.network.endpoint,
+      });
+      await refresh();
+      onClose();
+    } catch (error) {
+      setError(String(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const browse = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      let remote: Remote;
+      try {
+        remote = JSON.parse(publicText);
+      } catch {
+        throw new Error(
+          "These connection details could not be read. Copy them again from the other computer.",
+        );
+      }
+      if (target && remote?.identity?.id !== target.id)
+        throw new Error(
+          "These connection details belong to a different device.",
+        );
+      await command("verify_peer", { remote });
+      onRemote(remote);
       onClose();
     } catch (error) {
       setError(String(error));
@@ -224,55 +301,160 @@ export function ConnectDialog({
     <Dialog
       open
       onClose={onClose}
-      title="Connect a device"
-      description="Exchange connection information directly with the intended computer. Discovery alone does not establish trust."
+      title={target ? `Connect to ${target.name}` : "Connect a device"}
+      description="Keep Ulak open on both computers and connect them to the same Wi-Fi or Ethernet network."
     >
+      {needsNetwork && (
+        <div className="setup-notice">
+          <p>
+            This computer is set to work on its own. Choose a network before
+            connecting another device.
+          </p>
+          <Button onClick={onNetwork}>Set up network sharing</Button>
+        </div>
+      )}
       <div className="tabs">
         <Button
-          variant={mode === "pair" ? "default" : "ghost"}
-          onClick={() => setMode("pair")}
+          variant={mode === "receive" ? "default" : "ghost"}
+          onClick={() => {
+            setMode("receive");
+            setError("");
+          }}
         >
-          Pair a computer
+          I have an invitation
         </Button>
         <Button
-          variant={mode === "public" ? "default" : "ghost"}
-          onClick={() => setMode("public")}
+          variant={mode === "create" ? "default" : "ghost"}
+          onClick={() => {
+            setMode("create");
+            setError("");
+          }}
         >
-          Browse LAN-open shares
+          Create an invitation
         </Button>
       </div>
-      <label className="field">
-        {mode === "pair"
-          ? "Single-use pairing invitation"
-          : "Public connection descriptor (JSON)"}
-        <textarea
-          rows={6}
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder={
-            mode === "pair"
-              ? "Paste the invitation from the other computer"
-              : "Paste the descriptor exported by the host"
+      {mode === "receive" ? (
+        <>
+          <ol className="steps">
+            <li>
+              On the other computer, open{" "}
+              <b>Connect a device → Create an invitation</b>.
+            </li>
+            <li>
+              Copy the invitation and paste it below. Only accept invitations
+              from a computer you know.
+            </li>
+          </ol>
+          <label className="field">
+            Invitation from the other computer
+            <textarea
+              rows={3}
+              value={text}
+              maxLength={65_536}
+              onChange={(event) => setText(event.target.value)}
+              placeholder="Paste invitation here"
+            />
+          </label>
+          <Button
+            variant="default"
+            disabled={busy || !text.trim() || needsNetwork || !data?.serving}
+            onClick={() => void connect()}
+          >
+            {busy
+              ? "Connecting…"
+              : target
+                ? `Connect to ${target.name}`
+                : "Connect"}
+          </Button>
+        </>
+      ) : (
+        <>
+          <p className="hint">
+            Send this invitation directly to the other computer. There, open{" "}
+            <b>Connect a device → I have an invitation</b> and paste it. It
+            works once and expires in five minutes.
+          </p>
+          <Button
+            variant="default"
+            disabled={busy || needsNetwork || !data?.serving}
+            onClick={() => void create()}
+          >
+            {busy
+              ? "Creating…"
+              : invitation
+                ? "Create a new invitation"
+                : "Create invitation"}
+          </Button>
+          {invitation && (
+            <>
+              <label className="field">
+                Your invitation
+                <textarea
+                  rows={3}
+                  readOnly
+                  value={invitation}
+                  onFocus={(event) => event.target.select()}
+                />
+              </label>
+              <Button
+                disabled={expired}
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(invitation);
+                    setCopied(true);
+                  } catch {
+                    setError(
+                      "Could not copy automatically. Select the invitation above and press Ctrl+C.",
+                    );
+                  }
+                }}
+              >
+                {copied ? "Copied" : "Copy invitation"}
+              </Button>
+              <p className="hint" role="status">
+                {expired
+                  ? "This invitation has expired. Create a new one to connect."
+                  : "After connecting, the other computer appears in Devices. Choose which files it can access in My shares."}
+              </p>
+            </>
+          )}
+        </>
+      )}
+      <details className="advanced">
+        <summary>Browse without adding a device</summary>
+        <p className="hint">
+          For files shared with everyone on the network, paste connection
+          details obtained directly from the owner. They can save these from
+          Connection settings → Advanced settings.
+        </p>
+        <label className="field">
+          Connection details
+          <textarea
+            rows={3}
+            value={publicText}
+            maxLength={65_536}
+            onChange={(event) => setPublicText(event.target.value)}
+          />
+        </label>
+        <Button
+          disabled={busy || !publicText.trim()}
+          onClick={() => void browse()}
+        >
+          Browse shared files
+        </Button>
+      </details>
+      {error && (
+        <ErrorNotice
+          error={error}
+          message={
+            /^(This invitation|These connection details|Could not copy automatically)/.test(
+              error.replace(/^Error:\s*/, ""),
+            )
+              ? error.replace(/^Error:\s*/, "")
+              : "Could not connect. Check that both computers use the same network. If the invitation has expired, create a new one."
           }
         />
-      </label>
-      <p className="hint">
-        {mode === "pair"
-          ? "On the other computer: Commands → Create pairing invitation. Configure reachable addresses on both PCs first."
-          : "Obtain the descriptor through a trusted exchange. It verifies the host and grants no access to restricted shares."}
-      </p>
-      {error && (
-        <p className="inline-error" role="alert">
-          {error}
-        </p>
       )}
-      <Button
-        variant="default"
-        disabled={busy || !text.trim()}
-        onClick={() => void connect()}
-      >
-        {busy ? "Verifying identity…" : "Connect"}
-      </Button>
     </Dialog>
   );
 }
@@ -309,18 +491,18 @@ export function InviteDialog({
     <Dialog
       open
       onClose={onClose}
-      title={share ? "Invite a browser guest" : "Pair another computer"}
-      description="Invitations are single use and expire after five minutes."
+      title={share ? "Share with a browser guest" : "Connect another computer"}
+      description="Each invitation works once and expires in five minutes."
     >
       <p className="hint">
         {share
-          ? "The guest must first install and trust this host’s public CA. On iOS, also enable SSL trust in Certificate Trust Settings. Compare the CA fingerprint before installation. The resulting session expires after 30 minutes of inactivity or eight hours total."
-          : "Create an invitation, then paste it into Connect a device on the recipient computer. Pairing does not grant access to private shares automatically."}
+          ? "First, set up a secure browser connection using the steps below. Then create a link for this share. Guest access ends after 30 minutes without use or eight hours in total."
+          : "Create an invitation, then paste it into Connect a device on the other computer. Choose which files it can access in My shares."}
       </p>
       {share && (
         <>
           <label className="field">
-            Compare this public CA fingerprint with the guest device
+            Security code for browser setup
             <textarea
               rows={2}
               className="mono"
@@ -328,9 +510,14 @@ export function InviteDialog({
               value={data?.ca_fingerprint ?? ""}
             />
           </label>
+          <p className="hint">
+            Compare this code with the one on the browser setup page. If they
+            match, the certificate comes from this computer. Only install it on
+            a device you control.
+          </p>
           {data?.network.onboarding && (
             <p className="hint">
-              Certificate setup:{" "}
+              1. Open this setup address on the guest device:{" "}
               {(() => {
                 const url = new URL(data.network.endpoint);
                 url.protocol = "http:";
@@ -341,6 +528,21 @@ export function InviteDialog({
               })()}
             </p>
           )}
+          {!data?.network.onboarding && (
+            <p className="hint">
+              The browser setup page is off. Enable it in Connection settings,
+              or save the certificate below and move it to the guest device.
+            </p>
+          )}
+          <p className="hint">
+            2. Install the security certificate. On iPhone or iPad, also enable
+            full trust in Settings → General → About → Certificate Trust
+            Settings.
+          </p>
+          <p className="hint">
+            3. Create an invitation below, then open the link or scan its QR
+            code on the guest device.
+          </p>
         </>
       )}
       <Button
@@ -374,13 +576,14 @@ export function InviteDialog({
             )
           }
         >
-          Export public CA certificate
+          Save security certificate
         </Button>
       )}
       {error && (
-        <p className="inline-error" role="alert">
-          {error}
-        </p>
+        <ErrorNotice
+          error={error}
+          message="Could not prepare guest access. Check the connection settings, then try again."
+        />
       )}
     </Dialog>
   );
@@ -397,8 +600,49 @@ export function NetworkDialog({
   const [name, setName] = useState(data?.identity.name ?? "Ulak PC");
   const [value, setValue] = useState(network);
   const [ranges, setRanges] = useState(network.lan.join(", "));
+  const [choices, setChoices] = useState<NetworkChoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedNetwork, setSelectedNetwork] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    let disposed = false;
+    void command<NetworkChoice[]>("network_choices")
+      .then((items) => {
+        if (!disposed) setChoices(items ?? []);
+      })
+      .catch((error) => {
+        if (!disposed) setError(String(error));
+      })
+      .finally(() => {
+        if (!disposed) setLoading(false);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+  const chooseNetwork = (address: string) => {
+    setSelectedNetwork(address);
+    const choice = choices.find((item) => item.address === address);
+    if (!choice) return;
+    let port = "7443";
+    try {
+      port = new URL(value.endpoint).port || "443";
+    } catch {
+      /* Replace invalid manual settings with the selected connection. */
+    }
+    setValue({
+      ...value,
+      endpoint: `https://${choice.address}:${port}/`,
+      bind: `${choice.address}:${port}`,
+      lan: [choice.range],
+      advertise: true,
+      onboarding: value.onboarding
+        ? `${choice.address}:${value.onboarding.slice(value.onboarding.lastIndexOf(":") + 1)}`
+        : null,
+    });
+    setRanges(choice.range);
+  };
   const save = async () => {
     setBusy(true);
     setError("");
@@ -427,98 +671,163 @@ export function NetworkDialog({
       open
       onClose={onClose}
       title="Connection settings"
-      description="Use your reachable local IP address for other devices. Settings persist across restarts."
+      description="Choose how other devices find this computer. Your choices are saved for next time."
     >
       <label className="field">
         Device name
         <input value={name} onChange={(event) => setName(event.target.value)} />
       </label>
       <label className="field">
-        HTTPS address
-        <input
-          value={value.endpoint}
-          onChange={(event) =>
-            setValue({ ...value, endpoint: event.target.value })
-          }
-        />
+        Share over
+        <select
+          value={selectedNetwork}
+          onChange={(event) => chooseNetwork(event.target.value)}
+          disabled={loading || busy}
+        >
+          <option value="" disabled>
+            {loading ? "Looking for networks…" : "Choose a connection…"}
+          </option>
+          {choices.map((choice) => (
+            <option key={choice.address} value={choice.address}>
+              {choice.name} · {choice.address}
+            </option>
+          ))}
+        </select>
       </label>
-      <label className="field">
-        Listen address
-        <input
-          value={value.bind}
-          onChange={(event) => setValue({ ...value, bind: event.target.value })}
-        />
-      </label>
-      <label className="field">
-        Allowed LAN ranges (comma separated)
-        <input
-          placeholder="192.168.1.0/24"
-          value={ranges}
-          onChange={(event) => setRanges(event.target.value)}
-        />
-      </label>
+      <p className="hint">
+        Select the Wi-Fi or Ethernet connection your other devices use. This
+        makes Ulak discoverable there. Each share still has its own access
+        settings.
+      </p>
+      {!loading && !choices.length && (
+        <p className="hint">
+          No active Wi-Fi or Ethernet connection was found. Connect to a
+          network, then reopen settings, or use Advanced settings.
+        </p>
+      )}
+      <p className="hint">
+        {localOnly(value)
+          ? "Current connection: this computer only."
+          : `Connection address: ${value.endpoint}`}
+      </p>
       <label className="check">
         <input
           type="checkbox"
-          checked={value.advertise}
-          onChange={(event) =>
-            setValue({ ...value, advertise: event.target.checked })
-          }
+          checked={!!value.onboarding}
+          onChange={(event) => {
+            try {
+              const host = new URL(value.endpoint).hostname;
+              setValue({
+                ...value,
+                onboarding: event.target.checked ? `${host}:7080` : null,
+              });
+            } catch {
+              setError(
+                "Choose a network or enter a valid connection address first.",
+              );
+            }
+          }}
         />
-        Advertise this device with mDNS
-      </label>
-      <label className="field">
-        Public certificate setup listener (optional HTTP address)
-        <input
-          placeholder="192.168.1.10:7080"
-          value={value.onboarding ?? ""}
-          onChange={(event) =>
-            setValue({ ...value, onboarding: event.target.value || null })
-          }
-        />
-      </label>
-      <p className="hint">
-        The setup listener serves only trust instructions and the public
-        certificate. Shared content requires HTTPS.
-      </p>
-      <label className="field">
-        Public CA fingerprint
-        <textarea
-          className="mono"
-          rows={2}
-          readOnly
-          value={data?.ca_fingerprint ?? ""}
-        />
+        Enable browser setup page
       </label>
       <p className="hint">
-        The initial loopback address is reachable only on this PC. LAN-open
-        shares remain limited to the ranges above. Applying settings restarts
-        the sharing listener and may interrupt active readers.
+        Turn this on when setting up access from a phone or web browser. It
+        provides setup instructions and a security certificate.
       </p>
-      <div className="actions">
-        <Button
-          onClick={() =>
-            command("save_public", { certificate: false }).catch((error) =>
-              setError(String(error)),
-            )
-          }
-        >
-          Export connection descriptor
-        </Button>
-        <Button
-          onClick={() =>
-            command("save_public", { certificate: true }).catch((error) =>
-              setError(String(error)),
-            )
-          }
-        >
-          Export public CA
-        </Button>
-      </div>
-      {error && (
-        <p className="inline-error" role="alert">
-          {error}
+      <details className="advanced">
+        <summary>Advanced settings</summary>
+        <label className="field">
+          Secure connection address (HTTPS)
+          <input
+            value={value.endpoint}
+            onChange={(event) =>
+              setValue({ ...value, endpoint: event.target.value })
+            }
+          />
+        </label>
+        <label className="field">
+          Local listening address
+          <input
+            value={value.bind}
+            onChange={(event) =>
+              setValue({ ...value, bind: event.target.value })
+            }
+          />
+        </label>
+        <label className="field">
+          Networks allowed to read public shares (comma separated)
+          <input
+            placeholder="192.168.1.0/24"
+            value={ranges}
+            onChange={(event) => setRanges(event.target.value)}
+          />
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={value.advertise}
+            onChange={(event) =>
+              setValue({ ...value, advertise: event.target.checked })
+            }
+          />
+          Let other Ulak devices find this computer automatically
+        </label>
+        <label className="field">
+          Browser setup address (HTTP, optional)
+          <input
+            placeholder="192.168.1.10:7080"
+            value={value.onboarding ?? ""}
+            onChange={(event) =>
+              setValue({ ...value, onboarding: event.target.value || null })
+            }
+          />
+        </label>
+        <p className="hint">
+          This address serves setup instructions and the security certificate.
+          Files use the secure connection above.
         </p>
+        <label className="field">
+          Security code for browser setup
+          <textarea
+            className="mono"
+            rows={2}
+            readOnly
+            value={data?.ca_fingerprint ?? ""}
+          />
+        </label>
+        <p className="hint">
+          Compare this code on the guest device before installing this
+          computer's certificate.
+        </p>
+        <div className="actions">
+          <Button
+            onClick={() =>
+              command("save_public", { certificate: false }).catch((error) =>
+                setError(String(error)),
+              )
+            }
+          >
+            Save connection details
+          </Button>
+          <Button
+            onClick={() =>
+              command("save_public", { certificate: true }).catch((error) =>
+                setError(String(error)),
+              )
+            }
+          >
+            Save security certificate
+          </Button>
+        </div>
+      </details>
+      <p className="hint">
+        Applying connection changes may interrupt downloads from this computer.
+      </p>
+      {error && (
+        <ErrorNotice
+          error={error}
+          message="Could not apply these settings. Check the selected connection and try again."
+        />
       )}
       <div className="dialog-actions">
         <Button onClick={onClose}>Close</Button>

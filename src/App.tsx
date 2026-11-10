@@ -41,11 +41,14 @@ import {
 } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Dialog } from "./components/ui/dialog";
+import { ErrorNotice } from "./components/ErrorNotice";
 import { command, request, useStore } from "./store";
 import {
   active,
   audienceLabel,
+  localOnly,
   size,
+  transferLabel,
   type Discovered,
   type LocalShare,
   type Peer,
@@ -56,15 +59,15 @@ import {
 type View = "devices" | "shares" | "transfers";
 type Modal =
   | { kind: "share"; sources: string[]; existing?: LocalShare }
-  | { kind: "connect" }
+  | { kind: "connect"; target?: Discovered; initialMode?: "receive" | "create" }
   | { kind: "invite"; share?: string }
   | { kind: "network" }
   | { kind: "remove"; share: LocalShare }
   | null;
 const date = (timestamp: number | null) =>
   timestamp
-    ? new Date(timestamp * 1000).toLocaleString()
-    : "No successful connection yet";
+    ? new Date(timestamp * 1000).toLocaleString("en-GB")
+    : "Not connected yet";
 
 export function App() {
   const { data, error, refresh, report, transfer } = useStore();
@@ -141,7 +144,7 @@ export function App() {
         );
         if (event.payload.type === "drop") {
           if (event.payload.paths.length > 64)
-            report("Select at most 64 sources at a time.");
+            report("Choose up to 64 files or folders at a time.");
           else setModal({ kind: "share", sources: event.payload.paths });
         }
       }),
@@ -327,9 +330,7 @@ export function App() {
             <span>
               {data?.identity.name ?? "Connecting…"}
               <small>
-                {data?.serving
-                  ? "Sharing service running"
-                  : "Sharing service stopped"}
+                {data?.serving ? "Ready to share" : "Sharing is stopped"}
               </small>
             </span>
           </div>
@@ -364,8 +365,11 @@ export function App() {
           </div>
         </header>
         {error && (
-          <div className="error-banner" role="alert">
-            <span>{error}</span>
+          <div className="error-banner">
+            <ErrorNotice
+              error={error}
+              message="Something went wrong. Check your connection and try again."
+            />
             <Button
               variant="ghost"
               aria-label="Dismiss error"
@@ -409,9 +413,17 @@ export function App() {
             </div>
             {view === "devices" && !remote && (
               <>
+                {data && localOnly(data.network) && (
+                  <div className="setup-notice">
+                    <p>Other devices cannot reach this computer yet.</p>
+                    <Button onClick={() => setModal({ kind: "network" })}>
+                      Set up network sharing
+                    </Button>
+                  </div>
+                )}
                 <SectionLabel
-                  label="Paired devices"
-                  extra={`${peers.filter((peer) => online.includes(peer.remote.identity.id)).length} online · ${peers.length} paired`}
+                  label="Saved devices"
+                  extra={`${peers.filter((peer) => online.includes(peer.remote.identity.id)).length} online · ${peers.length} saved`}
                 />
                 {visiblePeers.map((peer) => (
                   <button
@@ -438,7 +450,7 @@ export function App() {
                       {peer.remote.identity.name}
                       <small>
                         {online.includes(peer.remote.identity.id)
-                          ? "Paired · verified"
+                          ? "Connected securely"
                           : `Last connected: ${date(peer.last_connected)}`}
                       </small>
                     </span>
@@ -456,7 +468,7 @@ export function App() {
                 {!peers.length && (
                   <Empty
                     icon={<Monitor size={30} />}
-                    title="No paired devices"
+                    title="No saved devices"
                     text="Connect a computer to browse its shares."
                     action={
                       <Button onClick={() => setModal({ kind: "connect" })}>
@@ -467,9 +479,12 @@ export function App() {
                   />
                 )}
                 {peers.length > 0 && !visiblePeers.length && (
-                  <p className="quiet">No paired devices match “{query}”.</p>
+                  <p className="quiet">No saved devices match “{query}”.</p>
                 )}
-                <SectionLabel label="Found on the network" extra="Unpaired" />
+                <SectionLabel
+                  label="Found on the network"
+                  extra="Updates automatically"
+                />
                 {visibleFound.map((item) => (
                   <div className="list-row" key={item.id}>
                     <span className="item-icon">
@@ -477,11 +492,15 @@ export function App() {
                     </span>
                     <span className="row-name">
                       {item.name}
-                      <small>Unverified · pair to trust this device</small>
+                      <small>
+                        Connect using an invitation from this computer
+                      </small>
                     </span>
                     <Button
                       data-list-item
-                      onClick={() => setModal({ kind: "connect" })}
+                      onClick={() =>
+                        setModal({ kind: "connect", target: item })
+                      }
                     >
                       Connect
                     </Button>
@@ -490,10 +509,10 @@ export function App() {
                 {!visibleFound.length && (
                   <p className="quiet">
                     {scanning
-                      ? "Looking for nearby Ulak agents…"
+                      ? "Looking for Ulak devices on your network…"
                       : query
                         ? `No discovered devices match “${query}”.`
-                        : "No unpaired devices found."}
+                        : "No new devices found. Keep Ulak open on the other computer. This list refreshes every 30 seconds."}
                   </p>
                 )}
                 {!!data?.shares.length && !query && (
@@ -556,7 +575,7 @@ export function App() {
             {view === "shares" && (
               <>
                 <SectionLabel
-                  label="Published sources"
+                  label="Shared files and folders"
                   extra={`${data?.shares.length ?? 0} share${data?.shares.length === 1 ? "" : "s"}`}
                 />
                 {visibleShares.map((item) => (
@@ -612,9 +631,7 @@ export function App() {
                   <Upload size={19} />
                   <span>
                     Drop files or folders{" "}
-                    <small>
-                      Nothing is published until you choose an audience
-                    </small>
+                    <small>Choose who can access them before sharing</small>
                   </span>
                 </button>
               </>
@@ -628,7 +645,8 @@ export function App() {
                 {preparing > 0 && (
                   <p className="quiet">
                     <LoaderCircle className="spin" size={16} />
-                    Preparing {preparing} download request(s)…
+                    Getting {preparing} download{preparing === 1 ? "" : "s"}{" "}
+                    ready…
                   </p>
                 )}
                 {visibleTransfers.map((item) => (
@@ -658,7 +676,7 @@ export function App() {
                     <span
                       className={`badge ${item.state === "failed" || item.state === "interrupted" ? "bad" : ""}`}
                     >
-                      {item.state}
+                      {transferLabel[item.state]}
                     </span>
                   </button>
                 ))}
@@ -695,17 +713,22 @@ export function App() {
                   <h2>{selectedPeer.remote.identity.name}</h2>
                   <span className="badge">
                     {online.includes(selected)
-                      ? "Online · verified"
+                      ? "Online · secure connection"
                       : "Offline"}
                   </span>
                   <dl>
                     <dt>Last connected</dt>
                     <dd>{date(selectedPeer.last_connected)}</dd>
-                    <dt>Device identity</dt>
-                    <dd className="mono">{selected}</dd>
-                    <dt>Last known address</dt>
-                    <dd className="mono">{selectedPeer.remote.endpoint}</dd>
                   </dl>
+                  <details className="advanced">
+                    <summary>Connection details</summary>
+                    <dl>
+                      <dt>Device ID</dt>
+                      <dd className="mono">{selected}</dd>
+                      <dt>Last known address</dt>
+                      <dd className="mono">{selectedPeer.remote.endpoint}</dd>
+                    </dl>
+                  </details>
                   <Button
                     variant="default"
                     onClick={() => run(() => openPeer(selectedPeer))}
@@ -731,7 +754,7 @@ export function App() {
                       })
                     }
                   >
-                    Unpair device
+                    Forget device
                   </Button>
                 </>
               ) : view === "shares" && selectedShare ? (
@@ -740,7 +763,7 @@ export function App() {
                   <span className="badge">
                     {selectedShare.available
                       ? "Available"
-                      : "Source unavailable"}
+                      : "File or folder unavailable"}
                   </span>
                   <dl>
                     <dt>Original location</dt>
@@ -779,7 +802,7 @@ export function App() {
                     Guest invitation
                   </Button>
                   <div className="guest-sessions">
-                    <SectionLabel label="Guest sessions" />
+                    <SectionLabel label="Browser guests" />
                     {data?.sessions
                       .filter((session) => session.shares.includes(selected))
                       .map((session) => (
@@ -802,13 +825,13 @@ export function App() {
                               )
                             }
                           >
-                            Revoke
+                            End access
                           </Button>
                         </div>
                       ))}
                     {!data?.sessions.some((session) =>
                       session.shares.includes(selected),
-                    ) && <p className="hint">No guest sessions.</p>}
+                    ) && <p className="hint">No browser guests yet.</p>}
                   </div>
                   <Button
                     variant="destructive"
@@ -822,7 +845,9 @@ export function App() {
               ) : view === "transfers" && selectedTransfer ? (
                 <>
                   <h2>{selectedTransfer.file.name}</h2>
-                  <span className="badge">{selectedTransfer.state}</span>
+                  <span className="badge">
+                    {transferLabel[selectedTransfer.state]}
+                  </span>
                   <Progress transfer={selectedTransfer} />
                   <dl>
                     <dt>Destination</dt>
@@ -836,13 +861,15 @@ export function App() {
                     <dd>{size(selectedTransfer.bytes_per_second)}/s</dd>
                   </dl>
                   {selectedTransfer.error && (
-                    <p className="inline-error">{selectedTransfer.error}</p>
+                    <ErrorNotice
+                      error={selectedTransfer.error}
+                      message="This download stopped. Check the connection and save location, then try resuming."
+                    />
                   )}
                   <TransferActions transfer={selectedTransfer} run={run} />
                   <p className="hint">
-                    Completion follows full content verification and
-                    finalization. Cancelled downloads retain a checkpoint for
-                    explicit resume.
+                    Ulak checks the whole file before marking it downloaded. If
+                    you cancel, you can resume later from Transfers.
                   </p>
                 </>
               ) : null}
@@ -856,7 +883,8 @@ export function App() {
               <span>
                 <b>{tasks[0].file.name}</b>
                 <small>
-                  {tasks[0].state} · {size(tasks[0].bytes_per_second)}/s
+                  {transferLabel[tasks[0].state]} ·{" "}
+                  {size(tasks[0].bytes_per_second)}/s
                   {tasks.length > 1 ? ` · +${tasks.length - 1} more` : ""}
                 </small>
               </span>
@@ -907,6 +935,9 @@ export function App() {
       )}
       {modal?.kind === "connect" && (
         <ConnectDialog
+          target={modal.target}
+          initialMode={modal.initialMode}
+          onNetwork={() => setModal({ kind: "network" })}
           onClose={() => {
             setModal(suspendedShare.current);
             suspendedShare.current = null;
@@ -928,7 +959,7 @@ export function App() {
           open
           onClose={() => setModal(null)}
           title="Remove this share?"
-          description="New listings and download requests will lose access. The original source remains in place."
+          description="Other devices will no longer be able to browse or download it. Your original files stay where they are."
         >
           <p>{modal.share.share.name}</p>
           <Button
@@ -966,7 +997,10 @@ export function App() {
               ["Add share", () => run(() => pick(false))],
               ["Add folder", () => run(() => pick(true))],
               ["Connect a device", () => setModal({ kind: "connect" })],
-              ["Create pairing invitation", () => setModal({ kind: "invite" })],
+              [
+                "Create invitation",
+                () => setModal({ kind: "connect", initialMode: "create" }),
+              ],
               ["Connection settings", () => setModal({ kind: "network" })],
               ["Hide to tray", () => run(() => getCurrentWindow().close())],
               ["Quit Ulak", () => run(() => command("quit_app"))],
@@ -1078,7 +1112,7 @@ function Progress({ transfer }: { transfer: Transfer }) {
     <div
       className={`progress ${transfer.state}`}
       role="progressbar"
-      aria-label={`${transfer.file.name}: ${transfer.state}`}
+      aria-label={`${transfer.file.name}: ${transferLabel[transfer.state]}`}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.floor(percent)}
@@ -1113,7 +1147,7 @@ function TransferActions({
   ) : (
     <p className="verified">
       <ShieldCheck size={16} />
-      Content verified
+      File checked and saved
     </p>
   );
 }

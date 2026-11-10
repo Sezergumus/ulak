@@ -2,13 +2,13 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Ulak · Local file access prototype</title>
+<title>Ulak · Shared files</title>
 <style>
 body{font:16px system-ui,sans-serif;background:#18191b;color:#eee;max-width:760px;margin:40px auto;padding:20px}button,a{font:inherit;color:inherit}button{background:#303236;border:1px solid #666;border-radius:8px;padding:10px;cursor:pointer}li{padding:12px 0;border-bottom:1px solid #333}small,p{color:#bbb}a{color:#efbd77}#status{white-space:pre-wrap}input{font:inherit;padding:10px;max-width:100%;box-sizing:border-box}form{display:flex;gap:8px;flex-wrap:wrap}
 </style>
 <h1>Ulak</h1>
-<p>Local HTTPS feasibility interface. Browse permitted folders and download individual files. Your browser manages downloads.</p>
-<form id="invite"><input id="token" aria-label="Guest invitation token" placeholder="Guest invitation token" autocomplete="off"><button>Redeem invitation</button></form>
+<p>Browse the files shared with you. Tap a file to download it. Your browser chooses where downloads are saved.</p>
+<form id="invite"><input id="token" aria-label="Guest invitation code" placeholder="Invitation code (if needed)" autocomplete="off"><button>Open invitation</button></form>
 <p id="status" role="status"></p>
 <button id="home">Shares</button>
 <ul id="files"></ul>

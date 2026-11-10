@@ -89,7 +89,7 @@ describe("desktop access and transfer flows", () => {
     const filter = screen.getByRole("textbox", { name: "Filter current list" });
     expect(document.activeElement).toBe(filter);
     await user.type(filter, "missing");
-    expect(screen.getByText("No paired devices match “missing”.")).toBeTruthy();
+    expect(screen.getByText("No saved devices match “missing”.")).toBeTruthy();
     await user.keyboard("{Escape}");
     expect((filter as HTMLInputElement).value).toBe("");
     await user.type(filter, "studio");
@@ -249,10 +249,10 @@ describe("desktop access and transfer flows", () => {
     };
     useStore.getState().transfer(transfer);
     await screen.findByText("large.bin");
-    expect(screen.queryByText("Content verified")).toBeNull();
+    expect(screen.queryByText("File checked and saved")).toBeNull();
     await user.click(screen.getByRole("button", { name: /My shares/ }));
     expect(screen.getByText("large.bin")).toBeTruthy();
-    expect(screen.getByText(/verifying ·/)).toBeTruthy();
+    expect(screen.getByText(/Checking file ·/)).toBeTruthy();
   });
 
   it("builds browser invitations from the ulak prefix and keeps the credential in the fragment", () => {

@@ -26,6 +26,15 @@ export type Network = {
   advertise: boolean;
   onboarding: string | null;
 };
+export type NetworkChoice = { name: string; address: string; range: string };
+export const localOnly = (network: Network) => {
+  try {
+    const host = new URL(network.endpoint).hostname;
+    return /^127\./.test(host) || ["[::1]", "localhost"].includes(host);
+  } catch {
+    return false;
+  }
+};
 export type TransferState =
   | "queued"
   | "preparing"
@@ -82,5 +91,16 @@ export const audienceLabel = (audience: Audience) =>
   audience.kind === "lan"
     ? "Everyone on the local network"
     : audience.kind === "devices"
-      ? `${audience.devices.length} paired device${audience.devices.length === 1 ? "" : "s"}`
-      : "Private · guest access only";
+      ? `${audience.devices.length} device${audience.devices.length === 1 ? "" : "s"}`
+      : "Invitation only";
+
+export const transferLabel: Record<TransferState, string> = {
+  queued: "Waiting",
+  preparing: "Getting ready",
+  transferring: "Downloading",
+  interrupted: "Download interrupted",
+  verifying: "Checking file",
+  completed: "Downloaded",
+  cancelled: "Cancelled",
+  failed: "Could not download",
+};

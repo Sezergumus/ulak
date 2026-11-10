@@ -181,6 +181,65 @@ try {
   } finally {
     occupied.close();
   }
+  await click("Connection settings");
+  await until(`!!document.querySelector('.dialog select:not(:disabled)')`);
+  assert.equal(
+    await evaluate(`document.querySelector('.dialog .advanced').open`),
+    false,
+  );
+  assert.equal(
+    await evaluate(
+      `document.querySelector('.dialog').textContent.includes('Public CA fingerprint')`,
+    ),
+    false,
+  );
+  await screenshot("connection-settings.png");
+  const networks = await invoke("network_choices");
+  assert.ok(Array.isArray(networks));
+  if (networks.length) {
+    const choice = networks[0];
+    assert.match(choice.range, /^\d+\.\d+\.\d+\.\d+\/\d+$/);
+    await evaluate(`(() => {
+      const select = document.querySelector('.dialog select');
+      select.value = ${JSON.stringify(choice.address)};
+      select.dispatchEvent(new Event('change', {bubbles: true}));
+    })()`);
+    await until(
+      `document.querySelector('.dialog').textContent.includes(${JSON.stringify(`https://${choice.address}:`)})`,
+    );
+    assert.equal(
+      (await invoke("snapshot")).network.endpoint,
+      snapshot.network.endpoint,
+    );
+    assert.equal(
+      await evaluate(
+        `document.querySelector('input[placeholder="192.168.1.0/24"]').value`,
+      ),
+      choice.range,
+    );
+  }
+  await evaluate(
+    `document.querySelector('[aria-label="Close dialog"]').click()`,
+  );
+  await click("Connect a device");
+  assert.equal(
+    await evaluate(
+      `document.querySelector('.dialog').textContent.includes('Discovery alone')`,
+    ),
+    false,
+  );
+  await screenshot("connect-device.png");
+  await click("Create an invitation");
+  assert.equal(
+    await evaluate(
+      `[...document.querySelectorAll('.dialog button')].find(button => button.textContent === 'Create invitation').disabled`,
+    ),
+    true,
+  );
+  await screenshot("create-invitation-network-setup.png");
+  await evaluate(
+    `document.querySelector('[aria-label="Close dialog"]').click()`,
+  );
   await screenshot("devices.png");
   await checkLayout();
   await key("f", "KeyF", 2);
@@ -268,10 +327,10 @@ try {
   );
   await evaluate(`document.querySelectorAll('nav button')[0].click()`);
   await click("Connect a device");
-  await click("Browse LAN-open shares");
-  await evaluate(`document.querySelector('.dialog textarea').focus()`);
+  await evaluate(`document.querySelector('.dialog details summary').click()`);
+  await evaluate(`document.querySelector('.dialog details textarea').focus()`);
   await send("Input.insertText", { text: JSON.stringify(descriptor) });
-  await click("Connect");
+  await click("Browse shared files");
   await until(
     `document.querySelector('.remote-browser .row-link')?.textContent.includes('sample.txt')`,
   );
@@ -334,7 +393,7 @@ try {
   assert.deepEqual(errors, []);
   await invoke("quit_app");
   console.log(
-    "PASS: native WebView, keyboard shortcuts/command navigation, compact share/browser layout at 1080 and 820 pixels, share audience UI, guest invitation/redemption, LAN-open browsing, certificate setup, live CLI download, close-to-tray service continuity, window reopening, explicit quit.",
+    "PASS: native WebView, network adapter choices and unapplied settings, simplified connection dialogs, keyboard shortcuts/command navigation, compact share/browser layout at 1080 and 820 pixels, share audience UI, guest invitation/redemption, LAN-open browsing, certificate setup, live CLI download, close-to-tray service continuity, window reopening, explicit quit.",
   );
 } catch (error) {
   await screenshot("failure.png").catch(() => {});

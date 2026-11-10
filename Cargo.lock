@@ -4822,6 +4822,7 @@ dependencies = [
  "ulak-core",
  "ulak-drag-probe",
  "ulak-local",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

@@ -659,6 +659,13 @@ main {
   color: #edb3a3;
   overflow-wrap: anywhere;
 }
+.inline-error p {
+  margin: 5px 0;
+}
+.inline-error summary {
+  cursor: pointer;
+  font-size: 11px;
+}
 .overlay {
   position: fixed;
   inset: 0;
@@ -801,6 +808,42 @@ main {
   display: flex;
   gap: 6px;
   margin: 12px 0;
+}
+.steps {
+  padding-left: 20px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #b4bac4;
+}
+.steps li + li {
+  margin-top: 7px;
+}
+.advanced {
+  margin: 16px 0;
+  font-size: 12px;
+}
+.advanced summary {
+  cursor: pointer;
+  color: #c1c5cd;
+}
+.setup-notice {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid #504a3e;
+  border-radius: 7px;
+  font-size: 12px;
+}
+.setup-notice p {
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+.field select {
+  width: 100%;
+  padding: 8px;
+  color: #ddd;
+  background: #191a1c;
+  border: 1px solid #41444b;
+  border-radius: 5px;
 }
 .tabs .primary {
   background: #383b42;
