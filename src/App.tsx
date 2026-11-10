@@ -1,10 +1,7 @@
-import {
-  ShareDialog,
-  ConnectDialog,
-  InviteDialog,
-  NetworkDialog,
-} from "./dialogs";
+import { ShareDialog, InviteDialog, NetworkDialog } from "./dialogs";
 import { RemoteBrowser } from "./RemoteBrowser";
+import { NearbyDialog, PairingDialog } from "./NearbyDialog";
+import { CommandMenu, type MenuAction } from "./CommandMenu";
 import {
   useCallback,
   useEffect,
@@ -16,7 +13,6 @@ import {
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Command } from "cmdk";
 import {
   ArrowDownToLine,
   ArrowRight,
@@ -67,6 +63,7 @@ type Modal =
   | ConnectModal
   | { kind: "invite"; share?: string }
   | { kind: "network"; returnTo?: ConnectModal }
+  | { kind: "pairing"; id: string }
   | { kind: "remove"; share: LocalShare }
   | null;
 const date = (timestamp: number | null) =>
@@ -88,9 +85,52 @@ export function App() {
   const [remote, setRemote] = useState<Remote | null>(null);
   const [preparing, setPreparing] = useState(0);
   const filterRef = useRef<HTMLInputElement>(null);
-  const commandInputRef = useRef<HTMLInputElement>(null);
+  const noticedPairings = useRef(new Set<string>());
   const scanLock = useRef(false);
   const suspendedShare = useRef<Modal>(null);
+  const pairedSessions =
+    data?.pairings
+      ?.filter((pairing) => pairing.state === "paired")
+      .map((pairing) => pairing.id)
+      .sort()
+      .join(",") ?? "";
+  useEffect(() => {
+    if (!pairedSessions) return;
+    let active = true;
+    void command<string[]>("presence")
+      .then((devices) => {
+        if (active) setOnline(devices);
+      })
+      .catch(report);
+    return () => {
+      active = false;
+    };
+  }, [pairedSessions, report]);
+  const pendingPairings =
+    data?.pairings?.filter(
+      (pairing) =>
+        pairing.code &&
+        (pairing.state === "comparing" || pairing.state === "waiting"),
+    ) ?? [];
+  useEffect(() => {
+    for (const id of noticedPairings.current) {
+      if (!data?.pairings?.some((pairing) => pairing.id === id))
+        noticedPairings.current.delete(id);
+    }
+    if (modal || palette) return;
+    const incoming = data?.pairings?.find(
+      (pairing) =>
+        pairing.incoming &&
+        pairing.code &&
+        pairing.state === "comparing" &&
+        !pairing.approved &&
+        !noticedPairings.current.has(pairing.id),
+    );
+    if (incoming) {
+      noticedPairings.current.add(incoming.id);
+      setModal({ kind: "pairing", id: incoming.id });
+    }
+  }, [data?.pairings, modal, palette]);
   useEffect(() => {
     if (data?.service_error) report(data.service_error);
   }, [data?.service_error, report]);
@@ -143,6 +183,11 @@ export function App() {
     retain(listen<Transfer>("transfer", (event) => transfer(event.payload)));
     retain(listen<string>("server-error", (event) => report(event.payload)));
     retain(
+      listen("pairing-changed", () => {
+        void refresh().catch(report);
+      }),
+    );
+    retain(
       getCurrentWebview().onDragDropEvent((event) => {
         setDrop(
           event.payload.type === "over" || event.payload.type === "enter",
@@ -180,7 +225,33 @@ export function App() {
   }, [refresh, report, scan, transfer]);
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        !event.altKey &&
+        !event.shiftKey &&
+        (!document.querySelector('[role="dialog"]') || palette)
+      ) {
+        const targetView = (
+          { "1": "devices", "2": "shares", "3": "transfers" } as const
+        )[event.key as "1" | "2" | "3"];
+        if (targetView) {
+          event.preventDefault();
+          setPalette(false);
+          setView(targetView);
+          setSelected("");
+          setRemote(null);
+          setQuery("");
+          return;
+        }
+        if (event.key === ",") {
+          event.preventDefault();
+          setPalette(false);
+          setModal({ kind: "network" });
+          return;
+        }
+      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        if (document.querySelector('[role="dialog"]') && !palette) return;
         event.preventDefault();
         setPalette((value) => !value);
       }
@@ -193,7 +264,7 @@ export function App() {
     };
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
-  }, []);
+  }, [palette]);
   const pick = async (folder: boolean) => {
     const sources = await command<string[]>("pick_sources", { folder });
     if (sources.length) setModal({ kind: "share", sources });
@@ -286,6 +357,150 @@ export function App() {
     setSelected(peer.remote.identity.id);
     setQuery("");
   };
+  const pairNearby = async (device: Discovered) => {
+    if (data && localOnly(data.network)) {
+      setModal({ kind: "connect", target: device });
+      return;
+    }
+    const pairing = await command<{ id: string }>("start_nearby_pairing", {
+      device: device.id,
+      endpoints: device.endpoints,
+    });
+    await refresh();
+    setModal({ kind: "pairing", id: pairing.id });
+  };
+  const closeConnection = () => {
+    setModal(suspendedShare.current);
+    suspendedShare.current = null;
+  };
+  const menuActions: MenuAction[] = [
+    {
+      id: "nav-devices",
+      label: "Devices",
+      description: "Find and browse your computers",
+      group: "Suggestions",
+      icon: <Monitor size={17} />,
+      shortcut: "Ctrl 1",
+      action: () => navigate("devices"),
+    },
+    {
+      id: "nav-shares",
+      label: "My shares",
+      description: "Manage files shared from this computer",
+      group: "Suggestions",
+      icon: <Folder size={17} />,
+      shortcut: "Ctrl 2",
+      action: () => navigate("shares"),
+    },
+    {
+      id: "nav-transfers",
+      label: "Transfers",
+      description: "View downloads and resume interrupted files",
+      group: "Suggestions",
+      icon: <ArrowDownToLine size={17} />,
+      shortcut: "Ctrl 3",
+      action: () => navigate("transfers"),
+    },
+    {
+      id: "add-share",
+      label: "Add share",
+      description: "Choose files to share",
+      group: "Actions",
+      icon: <Plus size={17} />,
+      action: () => void run(() => pick(false)),
+      verb: "Choose",
+    },
+    {
+      id: "add-folder",
+      label: "Add folder",
+      description: "Choose a folder to share",
+      group: "Actions",
+      icon: <FolderPlus size={17} />,
+      action: () => void run(() => pick(true)),
+      verb: "Choose",
+    },
+    {
+      id: "find-devices",
+      label: "Find nearby devices",
+      description: "Select a computer and pair",
+      group: "Actions",
+      icon: <Wifi size={17} />,
+      keywords: ["connect", "pair", "add device"],
+      action: () => setModal({ kind: "connect" }),
+    },
+    {
+      id: "settings",
+      label: "Connection settings",
+      description: "Network, device name, and browser access",
+      group: "Actions",
+      icon: <Settings2 size={17} />,
+      shortcut: "Ctrl ,",
+      action: () => setModal({ kind: "network" }),
+    },
+    {
+      id: "manual-connect",
+      label: "Connect with an invitation",
+      description: "An alternative when discovery is unavailable",
+      group: "Actions",
+      icon: <Link size={17} />,
+      action: () => setModal({ kind: "connect", initialMode: "receive" }),
+    },
+    {
+      id: "hide",
+      label: "Hide to tray",
+      description: "Keep sharing in the background",
+      group: "Actions",
+      icon: <Monitor size={17} />,
+      action: () => void run(() => getCurrentWindow().close()),
+      verb: "Hide",
+    },
+    {
+      id: "quit",
+      label: "Quit Ulak",
+      description: "Stop sharing and close the application",
+      group: "Actions",
+      icon: <X size={17} />,
+      action: () => void run(() => command("quit_app")),
+      verb: "Quit",
+    },
+    ...peers.map((peer): MenuAction => ({
+      id: `peer-${peer.remote.identity.id}`,
+      label: peer.remote.identity.name,
+      description: online.includes(peer.remote.identity.id)
+        ? "Online · browse shared files"
+        : "Offline · view device details",
+      group: "Devices",
+      icon: <Monitor size={17} />,
+      action: () => {
+        navigate("devices");
+        choosePeer(peer);
+        if (online.includes(peer.remote.identity.id))
+          void run(() => openPeer(peer));
+      },
+    })),
+    ...found
+      .filter((device) => !device.paired)
+      .map((device): MenuAction => ({
+        id: `nearby-${device.id}`,
+        label: device.name,
+        description: "Nearby · pair this device",
+        group: "Devices",
+        icon: <Wifi size={17} />,
+        action: () => void run(() => pairNearby(device)),
+        verb: "Pair",
+      })),
+    ...(data?.shares ?? []).map((item): MenuAction => ({
+      id: `share-${item.share.id}`,
+      label: item.share.name,
+      description: audienceLabel(item.share.audience),
+      group: "Shares",
+      icon: item.is_dir ? <Folder size={17} /> : <File size={17} />,
+      action: () => {
+        navigate("shares");
+        setSelected(item.share.id);
+      },
+    })),
+  ];
   return (
     <div className="app">
       <aside className="sidebar">
@@ -339,6 +554,12 @@ export function App() {
               </small>
             </span>
           </div>
+          {data?.shortcut_available && (
+            <div className="global-shortcut-hint">
+              <kbd>Ctrl Alt U</kbd>
+              <span>Open Ulak</span>
+            </div>
+          )}
         </div>
       </aside>
       <div className="workspace">
@@ -384,6 +605,21 @@ export function App() {
             </Button>
           </div>
         )}
+        {pendingPairings.map((pairing) => (
+          <div key={pairing.id} className="pairing-banner">
+            <Monitor size={17} />
+            <span>
+              {pairing.incoming
+                ? `${pairing.name} wants to pair`
+                : `Pairing with ${pairing.name}`}
+            </span>
+            <Button
+              onClick={() => setModal({ kind: "pairing", id: pairing.id })}
+            >
+              Review
+            </Button>
+          </div>
+        ))}
         <div className={`content-grid ${hasDetails ? "with-details" : ""}`}>
           <main onKeyDown={listKeys}>
             <div className="list-toolbar">
@@ -421,7 +657,7 @@ export function App() {
                 {data && localOnly(data.network) && (
                   <div className="setup-notice">
                     <p>Other devices cannot reach this computer yet.</p>
-                    <Button onClick={() => setModal({ kind: "network" })}>
+                    <Button onClick={() => setModal({ kind: "connect" })}>
                       Set up network sharing
                     </Button>
                   </div>
@@ -497,17 +733,13 @@ export function App() {
                     </span>
                     <span className="row-name">
                       {item.name}
-                      <small>
-                        Connect using an invitation from this computer
-                      </small>
+                      <small>Ready to pair</small>
                     </span>
                     <Button
                       data-list-item
-                      onClick={() =>
-                        setModal({ kind: "connect", target: item })
-                      }
+                      onClick={() => void run(() => pairNearby(item))}
                     >
-                      Connect
+                      Pair
                     </Button>
                   </div>
                 ))}
@@ -939,14 +1171,15 @@ export function App() {
         />
       )}
       {modal?.kind === "connect" && (
-        <ConnectDialog
+        <NearbyDialog
+          found={found}
+          scanning={scanning}
+          onScan={scan}
+          onPair={pairNearby}
           target={modal.target}
           initialMode={modal.initialMode}
           onNetwork={() => setModal({ kind: "network", returnTo: modal })}
-          onClose={() => {
-            setModal(suspendedShare.current);
-            suspendedShare.current = null;
-          }}
+          onClose={closeConnection}
           onRemote={(value) => {
             setRemote(value);
             setView("devices");
@@ -955,6 +1188,12 @@ export function App() {
       )}
       {modal?.kind === "invite" && (
         <InviteDialog share={modal.share} onClose={() => setModal(null)} />
+      )}
+      {modal?.kind === "pairing" && (
+        <PairingDialog
+          pairing={data?.pairings?.find((pairing) => pairing.id === modal.id)}
+          onClose={closeConnection}
+        />
       )}
       {modal?.kind === "network" && data && (
         <NetworkDialog
@@ -987,71 +1226,11 @@ export function App() {
           </Button>
         </Dialog>
       )}
-      <Dialog
+      <CommandMenu
         open={palette}
         onClose={() => setPalette(false)}
-        title="Commands"
-        description="Find a device, open a share, or choose an action."
-        initialFocusRef={commandInputRef}
-      >
-        <Command className="command-menu">
-          <Command.Input ref={commandInputRef} placeholder="Type a command…" />
-          <Command.List>
-            <Command.Empty>No matching commands.</Command.Empty>
-            {[
-              ["Devices", () => navigate("devices")],
-              ["My shares", () => navigate("shares")],
-              ["Transfers", () => navigate("transfers")],
-              ["Add share", () => run(() => pick(false))],
-              ["Add folder", () => run(() => pick(true))],
-              ["Connect a device", () => setModal({ kind: "connect" })],
-              [
-                "Create invitation",
-                () => setModal({ kind: "connect", initialMode: "create" }),
-              ],
-              ["Connection settings", () => setModal({ kind: "network" })],
-              ["Hide to tray", () => run(() => getCurrentWindow().close())],
-              ["Quit Ulak", () => run(() => command("quit_app"))],
-            ].map(([label, action]) => (
-              <Command.Item
-                key={String(label)}
-                onSelect={() => {
-                  setPalette(false);
-                  (action as () => void)();
-                }}
-              >
-                {String(label)}
-              </Command.Item>
-            ))}
-            {peers.map((peer) => (
-              <Command.Item
-                key={peer.remote.identity.id}
-                value={`device ${peer.remote.identity.name}`}
-                onSelect={() => {
-                  navigate("devices");
-                  choosePeer(peer);
-                  setPalette(false);
-                }}
-              >
-                Device · {peer.remote.identity.name}
-              </Command.Item>
-            ))}
-            {data?.shares.map((item) => (
-              <Command.Item
-                key={item.share.id}
-                value={`share ${item.share.name}`}
-                onSelect={() => {
-                  navigate("shares");
-                  setSelected(item.share.id);
-                  setPalette(false);
-                }}
-              >
-                Share · {item.share.name}
-              </Command.Item>
-            ))}
-          </Command.List>
-        </Command>
-      </Dialog>
+        actions={menuActions}
+      />
     </div>
   );
 }

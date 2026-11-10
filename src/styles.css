@@ -881,6 +881,253 @@ main {
   color: var(--muted);
   font-size: 12px;
 }
+.dialog.command-dialog {
+  width: min(620px, 92vw);
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #222327;
+  box-shadow:
+    0 24px 90px #0009,
+    0 0 0 1px #1118;
+}
+.command-search {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  border-bottom: 1px solid #36383e;
+  color: #a5abb5;
+}
+.command-menu .command-search [cmdk-input] {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  font-size: 15px;
+  height: 100%;
+  outline: none;
+}
+.command-escape {
+  padding: 0;
+  background: none;
+  color: #8f959f;
+}
+.command-escape kbd {
+  font-size: 10px;
+}
+.command-menu [cmdk-list] {
+  padding: 7px;
+  height: min(355px, 54vh);
+  max-height: 355px;
+  scroll-padding: 8px;
+}
+.command-menu [cmdk-group-heading] {
+  color: #838994;
+  padding: 10px 11px 6px;
+  font-size: 10px;
+  font-weight: 500;
+}
+.command-menu [cmdk-item] {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 11px;
+  min-height: 52px;
+  margin: 1px 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+}
+.command-menu [cmdk-item][data-selected="true"] {
+  background: #35373d;
+  border-color: #41444d;
+}
+.command-icon {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  background: #2b2d32;
+  border: 1px solid #44474f;
+  border-radius: 6px;
+  flex-shrink: 0;
+  color: #c8cdd5;
+}
+.command-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.command-copy b {
+  font-weight: 500;
+  font-size: 12px;
+  color: #e0e3e9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.command-copy small {
+  color: #939aa5;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.command-kind {
+  color: #858c98;
+  font-size: 10px;
+}
+.command-menu [cmdk-item] > kbd {
+  font-size: 10px;
+  color: #a4abb7;
+}
+.command-footer {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  height: 43px;
+  padding: 0 16px;
+  border-top: 1px solid #36383e;
+  font-size: 10px;
+  color: #999faa;
+  background: #1d1e22;
+}
+.command-footer span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.command-navigation {
+  margin-left: auto;
+}
+.command-footer kbd {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px 4px;
+}
+.command-primary {
+  color: #d7dbe2;
+}
+.nearby-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #9ba1ac;
+  margin: 13px 0 6px;
+}
+.nearby-list {
+  min-height: 90px;
+  max-height: 270px;
+  overflow-y: auto;
+}
+.nearby-search {
+  margin-bottom: 13px;
+}
+.nearby-search input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+.nearby-device {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  text-align: left;
+  width: 100%;
+  padding: 13px 9px;
+  border-bottom: 1px solid #373a41;
+  background: transparent;
+  color: #d7dce4;
+}
+.nearby-device:hover,
+.nearby-device:focus-visible {
+  background: #2d3036;
+  border-radius: 6px;
+}
+.nearby-device > span:first-of-type {
+  flex: 1;
+}
+.nearby-device b {
+  font-size: 12px;
+  font-weight: 500;
+  display: block;
+}
+.nearby-device small {
+  display: block;
+  color: #929aa7;
+  margin-top: 4px;
+  font-size: 11px;
+}
+.nearby-pair-label {
+  font-size: 11px;
+  color: #d0d6e0;
+}
+.network-choice {
+  width: 100%;
+  justify-content: flex-start;
+  margin: 5px 0;
+  padding: 13px;
+}
+.network-choice span {
+  flex: 1;
+  text-align: left;
+}
+.pairing-code {
+  margin: 23px 0;
+  padding: 22px;
+  text-align: center;
+  font:
+    32px/1.2 Consolas,
+    monospace;
+  letter-spacing: 5px;
+  border: 1px solid #444851;
+  background: #191b1f;
+  border-radius: 8px;
+  color: #e7eaf0;
+}
+.pairing-result {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 25px;
+  color: #a6c8b2;
+  font-size: 14px;
+}
+.pairing-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 9px 16px 0;
+  padding: 7px 12px;
+  border: 1px solid #4b5260;
+  background: #282d35;
+  border-radius: 7px;
+  font-size: 12px;
+}
+.pairing-banner span {
+  flex: 1;
+}
+.global-shortcut-hint {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 13px;
+  padding-left: 7px;
+  font-size: 10px;
+  color: #878f9c;
+}
+.global-shortcut-hint kbd {
+  font-size: 9px;
+}
 .browse-header {
   display: flex;
   align-items: center;

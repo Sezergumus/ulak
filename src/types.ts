@@ -64,6 +64,17 @@ export type Snapshot = {
   network: Network;
   ca_fingerprint: string;
   service_error?: string | null;
+  pairings?: Pairing[];
+  shortcut_available?: boolean;
+};
+export type Pairing = {
+  id: string;
+  name: string;
+  incoming: boolean;
+  code: string | null;
+  state: "comparing" | "waiting" | "paired" | "rejected";
+  approved: boolean;
+  expires_at: number;
 };
 export type Discovered = {
   id: string;

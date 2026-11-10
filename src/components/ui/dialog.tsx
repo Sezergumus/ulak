@@ -10,6 +10,8 @@ export function Dialog({
   description,
   children,
   initialFocusRef,
+  className,
+  hideHeader = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -17,6 +19,8 @@ export function Dialog({
   description: string;
   children: ReactNode;
   initialFocusRef?: RefObject<HTMLElement | null>;
+  className?: string;
+  hideHeader?: boolean;
 }) {
   return (
     <DialogPrimitive.Root
@@ -28,7 +32,7 @@ export function Dialog({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="overlay" />
         <DialogPrimitive.Content
-          className="dialog"
+          className={`dialog ${className ?? ""}`}
           onOpenAutoFocus={(event) => {
             if (initialFocusRef?.current) {
               event.preventDefault();
@@ -36,7 +40,7 @@ export function Dialog({
             }
           }}
         >
-          <header>
+          <header className={hideHeader ? "sr-only" : undefined}>
             <div>
               <DialogPrimitive.Title>{title}</DialogPrimitive.Title>
               <DialogPrimitive.Description>

@@ -4,6 +4,7 @@
 /dist/
 /src-tauri/gen/
 /.ulak/
+/Ulak.lnk
 *.part
 *.log
 

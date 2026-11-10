@@ -178,7 +178,7 @@ describe("desktop access and transfer flows", () => {
     await user.keyboard("{Control>}k{/Control}");
     await screen.findByRole("dialog", { name: "Commands" });
     expect(document.activeElement).toBe(
-      screen.getByPlaceholderText("Type a command…"),
+      screen.getByPlaceholderText("Search devices, shares, and actions…"),
     );
     await user.keyboard("My shares{Enter}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -272,7 +272,7 @@ describe("desktop access and transfer flows", () => {
     );
     await screen.findByRole("dialog", { name: "Connection settings" });
     await user.click(screen.getByRole("button", { name: "Close" }));
-    await screen.findByRole("dialog", { name: "Connect a device" });
+    await screen.findByRole("dialog", { name: "Add a device" });
     await user.click(screen.getByRole("button", { name: "Close dialog" }));
     await screen.findByRole("dialog", { name: "Who can access?" });
     expect(

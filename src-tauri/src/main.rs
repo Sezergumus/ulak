@@ -22,6 +22,7 @@ struct Runtime {
     notice: Mutex<Option<String>>,
     operations: std::sync::Arc<tokio::sync::Semaphore>,
     setup_serving: Mutex<bool>,
+    shortcut_available: Mutex<bool>,
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
@@ -56,6 +57,8 @@ fn snapshot(runtime: State<Runtime>) -> CommandResult<serde_json::Value> {
     value["network"] =
         serde_json::to_value(runtime.network.lock().unwrap().clone()).map_err(error)?;
     value["ca_fingerprint"] = serde_json::json!(identity::token_hash(&runtime.core.read().ca_pem));
+    value["pairings"] = serde_json::json!(runtime.core.pairing_views());
+    value["shortcut_available"] = serde_json::json!(*runtime.shortcut_available.lock().unwrap());
     value["service_error"] = serde_json::json!(runtime.notice.lock().unwrap().clone());
     Ok(value)
 }
@@ -124,6 +127,10 @@ async fn start_server(
     ulak_core::storage::atomic_json(&runtime.core.0.directory.join("network.json"), &network)
         .map_err(error)?;
     *runtime.network.lock().unwrap() = network;
+    runtime
+        .core
+        .enable_nearby_pairing(&remote.endpoint)
+        .map_err(error)?;
     *runtime.server_stop.lock().unwrap() = Some(signal.clone());
     *serving = true;
     *runtime.notice.lock().unwrap() = None;
@@ -165,6 +172,7 @@ async fn start_server(
             let _ = app.emit("server-error", failure.to_string());
         }
         setup_stop.cancel();
+        app.state::<Runtime>().core.disable_nearby_pairing();
         *app.state::<Runtime>().serving.lock().unwrap() = false;
     });
     Ok(())
@@ -284,6 +292,7 @@ fn quit_app(app: tauri::AppHandle) {
 
 #[tauri::command]
 async fn stop_server(runtime: State<'_, Runtime>) -> CommandResult<()> {
+    runtime.core.disable_nearby_pairing();
     if let Some(stop) = runtime.server_stop.lock().unwrap().take() {
         stop.cancel();
     }
@@ -491,6 +500,45 @@ async fn discover(
 }
 
 #[tauri::command]
+async fn start_nearby_pairing(
+    runtime: State<'_, Runtime>,
+    device: String,
+    endpoints: Vec<String>,
+) -> CommandResult<ulak_core::pairing::View> {
+    let network = runtime.network.lock().unwrap().clone();
+    let policy = LanPolicy {
+        allowed: network
+            .lan
+            .iter()
+            .map(|range| range.parse())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(error)?,
+    };
+    let mut failure =
+        "This device is unavailable. Keep Ulak open on both computers and search again."
+            .to_string();
+    for endpoint in endpoints.into_iter().take(4) {
+        let address = reqwest::Url::parse(&endpoint).ok().and_then(|url| {
+            url.host_str()
+                .and_then(|host| host.trim_matches(['[', ']']).parse().ok())
+        });
+        if !address.is_some_and(|ip| policy.contains(ip)) {
+            continue;
+        }
+        match ulak_core::pairing::start(&runtime.core, &endpoint, &device).await {
+            Ok(view) => return Ok(view),
+            Err(error) => failure = error.to_string(),
+        }
+    }
+    Err(failure)
+}
+
+#[tauri::command]
+fn decide_nearby_pairing(runtime: State<Runtime>, id: String, accept: bool) -> CommandResult<()> {
+    runtime.core.decide_pairing(&id, accept).map_err(error)
+}
+
+#[tauri::command]
 fn connection_descriptor(runtime: State<Runtime>, endpoint: String) -> CommandResult<Remote> {
     runtime.core.descriptor(&endpoint).map_err(error)
 }
@@ -628,7 +676,28 @@ fn revoke_guest(runtime: State<Runtime>, session: String) -> CommandResult<()> {
 }
 
 fn main() {
+    // Each data directory is a separate installation, including isolated test peers.
+    let mut context = tauri::generate_context!();
+    if let Ok(directory) = ulak_local::data_directory() {
+        let _ = std::fs::create_dir_all(&directory);
+        if let Ok(directory) = std::fs::canonicalize(directory) {
+            let key = identity::token_hash(&directory.to_string_lossy().to_lowercase());
+            context.config_mut().identifier = format!("dev.ulak.desktop.{}", &key[..16]);
+        }
+    }
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            show_main(app)
+        }))
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _, event| {
+                    if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        show_main(app);
+                    }
+                })
+                .build(),
+        )
         .plugin(tauri_plugin_dialog::init())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -672,6 +741,31 @@ fn main() {
                 notice: Mutex::new(None),
                 operations: std::sync::Arc::new(tokio::sync::Semaphore::new(64)),
                 setup_serving: Mutex::new(false),
+                shortcut_available: Mutex::new(false),
+            });
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let mut notified = BTreeSet::new();
+                loop {
+                    let runtime = handle.state::<Runtime>();
+                    if runtime.stop.is_cancelled() {
+                        break;
+                    }
+                    ulak_core::pairing::refresh(&runtime.core).await;
+                    let views = runtime.core.pairing_views();
+                    notified.retain(|id| views.iter().any(|view| &view.id == id));
+                    for view in &views {
+                        if view.incoming
+                            && view.code.is_some()
+                            && view.state == ulak_core::pairing::Status::Comparing
+                            && notified.insert(view.id.clone())
+                        {
+                            show_main(&handle);
+                        }
+                    }
+                    let _ = handle.emit("pairing-changed", ());
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                }
             });
             let runtime = app.state::<Runtime>();
             tauri::WebviewWindowBuilder::new(
@@ -684,6 +778,10 @@ fn main() {
             .min_inner_size(820.0, 560.0)
             .data_directory(runtime.core.0.directory.join("webview"))
             .build()?;
+            use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
+            let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyU);
+            *runtime.shortcut_available.lock().unwrap() =
+                app.global_shortcut().register(shortcut).is_ok();
             use tauri::{
                 menu::{Menu, MenuItem},
                 tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -780,6 +878,8 @@ fn main() {
             network_choices,
             quit_app,
             discover,
+            start_nearby_pairing,
+            decide_nearby_pairing,
             connection_descriptor,
             export_ca,
             start_server,
@@ -796,11 +896,19 @@ fn main() {
             rename_device,
             revoke_guest
         ])
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("Failed to initialize Ulak")
         .run(|handle, event| {
             if let tauri::RunEvent::Exit = event {
                 handle.state::<Runtime>().stop.cancel();
             }
         });
+}
+
+fn show_main(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
 }

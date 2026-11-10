@@ -673,6 +673,13 @@ export function NetworkDialog({
       title="Connection settings"
       description="Choose how other devices find this computer. Your choices are saved for next time."
     >
+      {typeof data?.shortcut_available === "boolean" && (
+        <p className="hint">
+          {data.shortcut_available
+            ? "Press Ctrl+Alt+U from any app to open Ulak while it is running."
+            : "Ctrl+Alt+U is unavailable. You can open Ulak from the tray or the Ulak shortcut."}
+        </p>
+      )}
       <label className="field">
         Device name
         <input value={name} onChange={(event) => setName(event.target.value)} />

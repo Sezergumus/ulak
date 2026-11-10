@@ -229,19 +229,15 @@ try {
     false,
   );
   await screenshot("connect-device.png");
-  await click("Create an invitation");
   assert.equal(
-    await evaluate(
-      `[...document.querySelectorAll('.dialog button')].find(button => button.textContent === 'Create invitation').disabled`,
-    ),
-    true,
+    await evaluate(`!!document.querySelector('.dialog textarea')`),
+    false,
   );
-  await screenshot("create-invitation-network-setup.png");
   await click("Set up network sharing");
   await until(`!!document.querySelector('.dialog select:not(:disabled)')`);
   await click("Close");
   await until(
-    `document.querySelector('[role=dialog] h2')?.textContent === 'Connect a device'`,
+    `document.querySelector('[role=dialog] h2')?.textContent === 'Add a device'`,
   );
   await evaluate(
     `document.querySelector('[aria-label="Close dialog"]').click()`,
@@ -258,9 +254,24 @@ try {
     `document.querySelector('[role=dialog]')?.textContent.includes('Commands')`,
   );
   await until(`document.activeElement?.hasAttribute('cmdk-input')`);
+  await screenshot("command-menu.png");
+  await send("Emulation.setDeviceMetricsOverride", {
+    width: 820,
+    height: 560,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
+  assert.equal(
+    await evaluate(
+      `document.querySelector('.command-dialog').scrollWidth <= document.querySelector('.command-dialog').clientWidth`,
+    ),
+    true,
+  );
+  await screenshot("command-menu-compact.png");
+  await send("Emulation.clearDeviceMetricsOverride");
   await send("Input.insertText", { text: "Transfers" });
   await until(
-    `document.querySelector('[cmdk-item][data-selected=true]')?.textContent === 'Transfers'`,
+    `document.querySelector('[cmdk-item][data-selected=true] [data-command-title]')?.textContent === 'Transfers'`,
   );
   await key("Enter", "Enter");
   await until(
@@ -333,6 +344,8 @@ try {
   );
   await evaluate(`document.querySelectorAll('nav button')[0].click()`);
   await click("Connect a device");
+  await evaluate(`document.querySelector('.dialog details summary').click()`);
+  await click("Use an invitation instead");
   await evaluate(`document.querySelector('.dialog details summary').click()`);
   await evaluate(`document.querySelector('.dialog details textarea').focus()`);
   await send("Input.insertText", { text: JSON.stringify(descriptor) });

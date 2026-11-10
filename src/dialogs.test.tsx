@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConnectDialog, NetworkDialog } from "./dialogs";
+import { NearbyDialog, PairingDialog } from "./NearbyDialog";
 import { useStore } from "./store";
 import type { Snapshot } from "./types";
 
@@ -61,6 +62,137 @@ beforeEach(() => {
 });
 
 describe("simple connection setup", () => {
+  it("pairs a device directly from the nearby list without a copied invitation", async () => {
+    const user = userEvent.setup();
+    const device = {
+      id: remote.identity.id,
+      name: remote.identity.name,
+      endpoints: [remote.endpoint],
+      paired: false,
+      verified: false,
+    };
+    const pair = vi.fn().mockResolvedValue(undefined);
+    render(
+      <NearbyDialog
+        found={[device]}
+        scanning={false}
+        onScan={vi.fn().mockResolvedValue(undefined)}
+        onPair={pair}
+        onClose={vi.fn()}
+        onNetwork={vi.fn()}
+        onRemote={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("textbox", { name: /invitation/i })).toBeNull();
+    await user.click(screen.getByRole("button", { name: /Studio PC.*Pair/ }));
+    expect(pair).toHaveBeenCalledWith(device);
+  });
+
+  it("turns on nearby sharing for a chosen network with a single action", async () => {
+    const user = userEvent.setup();
+    useStore.setState({
+      data: {
+        ...structuredClone(snapshot),
+        network: { ...snapshot.network, endpoint: "https://127.0.0.1:7443/" },
+      },
+    });
+    render(
+      <NearbyDialog
+        found={[]}
+        scanning={false}
+        onScan={vi.fn().mockResolvedValue(undefined)}
+        onPair={vi.fn()}
+        onClose={vi.fn()}
+        onNetwork={vi.fn()}
+        onRemote={vi.fn()}
+      />,
+    );
+    await user.click(await screen.findByRole("button", { name: "Use Wi-Fi" }));
+    await waitFor(() =>
+      expect(mock.invoke).toHaveBeenCalledWith("apply_network", {
+        name: "My PC",
+        network: {
+          endpoint: "https://10.24.5.9:7443/",
+          bind: "10.24.5.9:7443",
+          lan: ["10.24.0.0/16"],
+          advertise: true,
+          onboarding: null,
+        },
+      }),
+    );
+  });
+
+  it("shows the comparison number and waits for both computers rather than closing after one approval", async () => {
+    const user = userEvent.setup();
+    const pairing = {
+      id: "pending",
+      name: "Studio PC",
+      incoming: false,
+      code: "123456",
+      state: "comparing" as const,
+      approved: false,
+      expires_at: 9999999999,
+    };
+    const close = vi.fn();
+    const view = render(<PairingDialog pairing={pairing} onClose={close} />);
+    expect(screen.getByLabelText("Pairing number").textContent).toBe("123 456");
+    await user.click(screen.getByRole("button", { name: "Match and pair" }));
+    await waitFor(() =>
+      expect(mock.invoke).toHaveBeenCalledWith("decide_nearby_pairing", {
+        id: "pending",
+        accept: true,
+      }),
+    );
+    expect(close).not.toHaveBeenCalled();
+    view.rerender(
+      <PairingDialog
+        pairing={{ ...pairing, approved: true, state: "waiting" }}
+        onClose={close}
+      />,
+    );
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Waiting for confirmation",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    view.rerender(
+      <PairingDialog
+        pairing={{ ...pairing, approved: true, state: "paired" }}
+        onClose={close}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it("declines a pairing request when its dialog is cancelled", async () => {
+    const user = userEvent.setup();
+    const close = vi.fn();
+    render(
+      <PairingDialog
+        pairing={{
+          id: "pending",
+          name: "Studio PC",
+          incoming: true,
+          code: "123456",
+          state: "comparing",
+          approved: false,
+          expires_at: 9999999999,
+        }}
+        onClose={close}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(mock.invoke).toHaveBeenCalledWith("decide_nearby_pairing", {
+        id: "pending",
+        accept: false,
+      }),
+    );
+    await waitFor(() => expect(close).toHaveBeenCalledOnce());
+  });
   it("creates and copies an invitation in the same dialog without asking for a certificate code", async () => {
     const user = userEvent.setup();
     const copy = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
