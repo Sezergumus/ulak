@@ -2,6 +2,22 @@
 
 Recorded on 2026-11-09. Automated results below were obtained on Windows using workspace-local Rust 1.99.1. Hardware-dependent checks are listed separately and are not marked passed by implementation alone.
 
+## Nearby pairing and keyboard access — 2026-11-10
+
+The ordinary desktop pairing flow now discovers nearby Ulak computers, lets the user select one, and asks both users to compare the same six-digit number and choose Match and pair. One explicit Wi-Fi/Ethernet selection can enable discovery on first use; invitation copying remains an alternative. Signed nonce commitments bind both descriptors before reveal, both approvals are required, and pairing grants no file access by itself. Pending sessions are bounded, LAN-scoped, rate-limited, and expire in memory. The public identity bootstrap is the sole untrusted TLS request and cannot serve content. Details and interrupted-confirmation limitations are in [protocol.md](protocol.md#nearby-numeric-comparison). Independent protocol review remains open.
+
+The command menu has focused search, grouped device/share/action results, secondary descriptions, shortcut badges, and keyboard action hints. Ctrl+1/2/3 navigates the main views, Ctrl+, opens connection settings, and Ctrl+Alt+U opens the running desktop from the background. Workspace-local launch helpers and a generated shortcut start the built app or reactivate its existing window. Separate data directories retain independent instances. No global installation or auto-start configuration was added.
+
+Validation for this continuation:
+
+- Frontend production build and 18 frontend tests passed.
+- Full Rust workspace tests: 39 passed, one large-transfer test ignored. Full-workspace Clippy with warnings denied, formatting, whitespace, JavaScript syntax, and PowerShell syntax passed; desktop and CLI builds passed.
+- Two real WebViews passed equal-number comparison, both approvals, rejection, private-share isolation, an explicitly permitted paired download/content check, verified presence after pairing, real global shortcut input, and second-launch reactivation. Default loopback run: `.tools/nearby-smoke-a948bb5af3cc4b32a6326848b334fb5c`.
+- An active-adapter run also passed mDNS discovery and initiating pairing by selecting the actual nearby-device row. Final artifacts: `.tools/nearby-smoke-56ade68595b64e219194e448b1aa1dcf`. This used two isolated profiles on one workstation and does not establish physical second-PC, wireless isolation, or external firewall behavior.
+- The desktop smoke passed command search/Enter navigation and menu layout at 1080/820 pixels, existing share/guest/CLI workflows, close-to-tray continuity, reopening, and explicit quit. Final artifacts: `.tools/desktop-smoke-e2209040cb63463b826d85a86b1502f6`. Screenshots were inspected. Normal-profile shortcut startup preserved the user's two shares and existing settings.
+
+Real phones, physical second PCs, native dialogs, actual Explorer transfers, tray mouse/menu interaction, separate-account checks, network/disk failures, and 50 GB acceptance remain pending. User visual acceptance is separate from these executed checks. The invitation-first revision below is historical; nearby numeric approval supersedes it for ordinary desktop pairing.
+
 ## Plain-English connection revision — 2026-11-10
 
 The desktop now explains automatic Ulak discovery, offers an explicit Wi-Fi/Ethernet picker using Windows adapter addresses and actual subnets, keeps custom fields under Advanced settings, and combines invitation creation/copy and joining in Connect a device. Discovery candidates remain untrusted, and a connection record for a different selected device is rejected. Initial loopback defaults and server-authoritative share permissions are preserved. The certificate fingerprint is presented as Security code for browser setup with comparison instructions in the existing guest flow; native pairing does not require entering it. Authored product strings are plain English, technical errors are expandable, and transfer labels still distinguish checking a file from successful completion.
