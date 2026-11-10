@@ -255,6 +255,35 @@ describe("desktop access and transfer flows", () => {
     expect(screen.getByText(/Checking file ·/)).toBeTruthy();
   });
 
+  it("returns from network setup to connecting a device and preserves the original sharing dialog", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText("Studio PC");
+    await user.click(screen.getByRole("button", { name: /My shares/ }));
+    await user.click(screen.getByRole("button", { name: /Projects/ }));
+    await user.click(screen.getByRole("button", { name: /Manage access/ }));
+    await user.click(
+      screen.getByRole("button", { name: "Connect a new device" }),
+    );
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Set up network sharing",
+      }),
+    );
+    await screen.findByRole("dialog", { name: "Connection settings" });
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    await screen.findByRole("dialog", { name: "Connect a device" });
+    await user.click(screen.getByRole("button", { name: "Close dialog" }));
+    await screen.findByRole("dialog", { name: "Who can access?" });
+    expect(
+      (
+        screen.getByRole("checkbox", {
+          name: /Studio PC.*Offline/,
+        }) as HTMLInputElement
+      ).checked,
+    ).toBe(true);
+  });
+
   it("builds browser invitations from the ulak prefix and keeps the credential in the fragment", () => {
     const encoded =
       "ulak:" +

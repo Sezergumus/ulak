@@ -57,11 +57,16 @@ import {
 } from "./types";
 
 type View = "devices" | "shares" | "transfers";
+type ConnectModal = {
+  kind: "connect";
+  target?: Discovered;
+  initialMode?: "receive" | "create";
+};
 type Modal =
   | { kind: "share"; sources: string[]; existing?: LocalShare }
-  | { kind: "connect"; target?: Discovered; initialMode?: "receive" | "create" }
+  | ConnectModal
   | { kind: "invite"; share?: string }
-  | { kind: "network" }
+  | { kind: "network"; returnTo?: ConnectModal }
   | { kind: "remove"; share: LocalShare }
   | null;
 const date = (timestamp: number | null) =>
@@ -937,7 +942,7 @@ export function App() {
         <ConnectDialog
           target={modal.target}
           initialMode={modal.initialMode}
-          onNetwork={() => setModal({ kind: "network" })}
+          onNetwork={() => setModal({ kind: "network", returnTo: modal })}
           onClose={() => {
             setModal(suspendedShare.current);
             suspendedShare.current = null;
@@ -952,7 +957,10 @@ export function App() {
         <InviteDialog share={modal.share} onClose={() => setModal(null)} />
       )}
       {modal?.kind === "network" && data && (
-        <NetworkDialog network={data.network} onClose={() => setModal(null)} />
+        <NetworkDialog
+          network={data.network}
+          onClose={() => setModal(modal.returnTo ?? null)}
+        />
       )}
       {modal?.kind === "remove" && (
         <Dialog

@@ -85,7 +85,7 @@ async function until(expression) {
 async function click(text) {
   assert.ok(
     await evaluate(
-      `(() => { const button = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(text)}); if (!button) return false; button.click(); return true; })()`,
+      `(() => { const scope = document.querySelector('[role=dialog]') ?? document; const button = [...scope.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(text)}); if (!button) return false; button.click(); return true; })()`,
     ),
     `Missing button: ${text}`,
   );
@@ -237,6 +237,12 @@ try {
     true,
   );
   await screenshot("create-invitation-network-setup.png");
+  await click("Set up network sharing");
+  await until(`!!document.querySelector('.dialog select:not(:disabled)')`);
+  await click("Close");
+  await until(
+    `document.querySelector('[role=dialog] h2')?.textContent === 'Connect a device'`,
+  );
   await evaluate(
     `document.querySelector('[aria-label="Close dialog"]').click()`,
   );
