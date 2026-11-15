@@ -187,6 +187,10 @@
       transform: scale(0.97);
     }
 
+    .button[hidden] {
+      display: none;
+    }
+
     .button.primary {
       background: var(--primary-bg);
       color: var(--primary-text);
@@ -207,6 +211,12 @@
     .button.icon-only {
       width: 32px;
       padding: 0;
+    }
+
+    .button.compact-btn {
+      min-height: 30px;
+      padding: 4px 9px;
+      font-size: 12px;
     }
 
     .button[aria-expanded="true"] {
@@ -357,6 +367,18 @@
       color: var(--muted);
     }
 
+    .status-action {
+      margin-left: 8px;
+      padding: 2px 8px;
+      min-height: 24px;
+      border-radius: 5px;
+      border: 1px solid var(--line-strong);
+      background: #23262b;
+      color: var(--text);
+      font-size: 11.5px;
+      font-weight: 500;
+    }
+
     /* List toolbar: breadcrumbs + filter */
     .list-toolbar {
       display: flex;
@@ -478,7 +500,7 @@
     /* Aligned file columns */
     .file-columns {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 84px 28px;
+      grid-template-columns: minmax(0, 1fr) 84px 64px;
       gap: 12px;
       padding: 7px 10px;
       border-bottom: 1px solid var(--line);
@@ -509,13 +531,17 @@
     }
 
     .file-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
       border-bottom: 1px solid var(--line-row);
     }
 
     .list-row {
-      width: 100%;
+      flex: 1;
+      min-width: 0;
       min-height: 52px;
-      padding: 8px 10px;
+      padding: 8px 6px 8px 10px;
       display: grid;
       grid-template-columns: 24px minmax(0, 1fr) 84px 28px;
       gap: 12px;
@@ -526,6 +552,30 @@
       transition:
         transform 120ms var(--ease-out),
         background-color 130ms ease;
+    }
+
+    .row-dl-btn,
+    .row-dl-spacer {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      margin-right: 4px;
+    }
+
+    .row-dl-btn {
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      transition:
+        transform 120ms var(--ease-out),
+        background-color 130ms ease,
+        color 130ms ease;
+    }
+
+    .row-dl-btn:active:not(:disabled) {
+      transform: scale(0.95);
     }
 
     .list-row:active:not(:disabled) {
@@ -696,8 +746,10 @@
         background: var(--bg-hover);
         color: var(--text-strong);
       }
-      .list-row:hover:not(:disabled) {
+      .list-row:hover:not(:disabled),
+      .row-dl-btn:hover:not(:disabled) {
         background: var(--bg-hover);
+        color: var(--text-strong);
       }
       .list-row:hover:not(:disabled) .row-action {
         color: var(--text-strong);
@@ -710,21 +762,24 @@
         display: none;
       }
       .search-box {
-        width: 100%;
+        flex: 1 1 140px;
+        width: auto;
+        min-width: 0;
       }
       .toolbar-right {
         width: 100%;
+        flex-wrap: wrap;
         justify-content: space-between;
       }
       .file-columns {
-        grid-template-columns: minmax(0, 1fr) 68px 24px;
+        grid-template-columns: minmax(0, 1fr) 68px 60px;
         gap: 8px;
       }
       .list-row {
         min-height: 56px;
         grid-template-columns: 22px minmax(0, 1fr) 68px 24px;
         gap: 8px;
-        padding: 10px 6px;
+        padding: 10px 4px 10px 6px;
       }
       .invite-form .button {
         width: 100%;
@@ -818,7 +873,7 @@
               </button>
             </div>
             <form id="invite" class="invite-form">
-              <input id="token" class="field-input" aria-label="Guest invitation code" placeholder="Paste invitation code" autocomplete="off" spellcheck="false">
+              <input id="token" class="field-input" aria-label="Guest invitation code" placeholder="Paste invitation code or guest link" autocomplete="off" spellcheck="false">
               <button id="invite-submit" class="button primary" type="submit">Open invitation</button>
             </form>
           </div>
@@ -838,6 +893,14 @@
       <div class="list-toolbar">
         <nav id="breadcrumbs" class="nav-trail" aria-label="Location"></nav>
         <div class="toolbar-right">
+          <button id="download-folder" class="button secondary compact-btn" type="button" hidden>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" x2="12" y1="15" y2="3"/>
+            </svg>
+            <span>Download folder</span>
+          </button>
           <label class="search-box" aria-label="Filter items">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>

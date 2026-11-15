@@ -145,15 +145,15 @@ async fn hello(State(api): State<Api>, Query(query): Query<HelloQuery>) -> ApiRe
     Ok(Json(hello))
 }
 
-fn check_origin(headers: &HeaderMap) -> ApiResult<()> {
+fn check_origin(headers: &HeaderMap, uri: &Uri) -> ApiResult<()> {
     if let Some(origin) = headers.get(header::ORIGIN) {
-        let expected = format!(
-            "https://{}",
-            headers
-                .get(header::HOST)
-                .and_then(|v| v.to_str().ok())
-                .unwrap_or("")
-        );
+        let authority = headers
+            .get(header::HOST)
+            .and_then(|v| v.to_str().ok())
+            .or_else(|| uri.authority().map(axum::http::uri::Authority::as_str))
+            .filter(|v| !v.is_empty())
+            .ok_or(ApiError(StatusCode::FORBIDDEN))?;
+        let expected = format!("https://{authority}");
         if origin.to_str().ok() != Some(expected.as_str()) {
             return Err(ApiError(StatusCode::FORBIDDEN));
         }
@@ -161,8 +161,8 @@ fn check_origin(headers: &HeaderMap) -> ApiResult<()> {
     Ok(())
 }
 
-fn pairing_scope(api: &Api, address: SocketAddr, headers: &HeaderMap) -> ApiResult<()> {
-    check_origin(headers)?;
+fn pairing_scope(api: &Api, address: SocketAddr, headers: &HeaderMap, uri: &Uri) -> ApiResult<()> {
+    check_origin(headers, uri)?;
     if !api.lan.contains(address.ip()) {
         return Err(ApiError(StatusCode::FORBIDDEN));
     }
@@ -172,8 +172,9 @@ async fn pairing_identity(
     State(api): State<Api>,
     ConnectInfo(address): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
+    uri: Uri,
 ) -> ApiResult<Json<Remote>> {
-    pairing_scope(&api, address, &headers)?;
+    pairing_scope(&api, address, &headers, &uri)?;
     api.core
         .pairing_identity()
         .map(Json)
@@ -183,9 +184,10 @@ async fn pairing_start(
     State(api): State<Api>,
     ConnectInfo(address): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
+    uri: Uri,
     Json(request): Json<crate::pairing::Start>,
 ) -> ApiResult<Json<crate::pairing::Offer>> {
-    pairing_scope(&api, address, &headers)?;
+    pairing_scope(&api, address, &headers, &uri)?;
     api.core
         .receive_pairing_start(request, address.ip())
         .map(Json)
@@ -195,9 +197,10 @@ async fn pairing_reveal(
     State(api): State<Api>,
     ConnectInfo(address): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
+    uri: Uri,
     Json(request): Json<crate::pairing::Reveal>,
 ) -> ApiResult<Json<crate::pairing::Reveal>> {
-    pairing_scope(&api, address, &headers)?;
+    pairing_scope(&api, address, &headers, &uri)?;
     api.core
         .receive_pairing_reveal(request)
         .map(Json)
@@ -207,9 +210,10 @@ async fn pairing_check(
     State(api): State<Api>,
     ConnectInfo(address): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
+    uri: Uri,
     Json(request): Json<crate::pairing::Check>,
 ) -> ApiResult<Json<crate::pairing::Reply>> {
-    pairing_scope(&api, address, &headers)?;
+    pairing_scope(&api, address, &headers, &uri)?;
     api.core
         .receive_pairing_check(request)
         .map(Json)
@@ -219,9 +223,10 @@ async fn pairing_check(
 async fn pair(
     State(api): State<Api>,
     headers: HeaderMap,
+    uri: Uri,
     Json(request): Json<PairRequest>,
 ) -> ApiResult<Json<DeviceIdentity>> {
-    check_origin(&headers)?;
+    check_origin(&headers, &uri)?;
     auth::redeem_pair(&api.core, request)
         .map(Json)
         .map_err(|_| ApiError(StatusCode::UNAUTHORIZED))
@@ -230,9 +235,10 @@ async fn pair(
 async fn guest(
     State(api): State<Api>,
     headers: HeaderMap,
+    uri: Uri,
     Json(request): Json<GuestRedemption>,
 ) -> ApiResult<Response> {
-    check_origin(&headers)?;
+    check_origin(&headers, &uri)?;
     let grant = auth::redeem_guest(&api.core, &request.token)
         .map_err(|_| ApiError(StatusCode::UNAUTHORIZED))?;
     let cookie = format!(

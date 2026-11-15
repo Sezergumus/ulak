@@ -8,6 +8,7 @@ const colMetaLabelEl = document.querySelector('#col-meta-label');
 const breadcrumbsEl = document.querySelector('#breadcrumbs');
 const filterInput = document.querySelector('#filter');
 const filterClearBtn = document.querySelector('#filter-clear');
+const downloadFolderBtn = document.querySelector('#download-folder');
 const itemCountEl = document.querySelector('#item-count');
 const moreWrapEl = document.querySelector('#more-wrap');
 const moreBtn = document.querySelector('#more');
@@ -33,6 +34,7 @@ let stack = [{ share: null, entry: null, name: 'Shares' }];
 let loadedItems = [];
 let nextCursor = null;
 let preparingId = null;
+let folderAbort = null;
 let requestSeq = 0;
 let inviteDismissed = false;
 let reducedMotionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
@@ -161,6 +163,8 @@ function renderList(animateEnter = false) {
 
   colMetaLabelEl.textContent = atRoot ? 'Type' : 'Size';
   columnsEl.hidden = visible.length === 0;
+  downloadFolderBtn.hidden = atRoot || loadedItems.length === 0;
+  downloadFolderBtn.disabled = Boolean(folderAbort || preparingId);
   listEl.replaceChildren();
 
   itemCountEl.textContent =
@@ -198,7 +202,7 @@ function renderList(animateEnter = false) {
     const unavailable = item.available === false;
     const isPreparing = preparingId === item.id;
     row.className = unavailable ? 'list-row unavailable' : 'list-row';
-    row.disabled = unavailable || isPreparing;
+    row.disabled = unavailable || isPreparing || Boolean(folderAbort);
 
     const iconWrap = document.createElement('span');
     iconWrap.className = isPreparing
@@ -266,6 +270,26 @@ function renderList(animateEnter = false) {
     });
 
     li.append(row);
+    if (item.is_dir && !unavailable) {
+      const dlBtn = document.createElement('button');
+      dlBtn.type = 'button';
+      dlBtn.className = 'row-dl-btn';
+      dlBtn.disabled = Boolean(folderAbort || preparingId);
+      dlBtn.setAttribute('aria-label', `Download folder ${item.name}`);
+      dlBtn.title = `Download folder ${item.name}`;
+      dlBtn.append(createIcon('download', 15));
+      dlBtn.addEventListener('click', () => {
+        const shareId = atRoot ? item.id : current.share;
+        const entryId = atRoot ? null : item.id;
+        void downloadFolder(shareId, entryId, item.name);
+      });
+      li.append(dlBtn);
+    } else {
+      const spacer = document.createElement('span');
+      spacer.className = 'row-dl-spacer';
+      spacer.setAttribute('aria-hidden', 'true');
+      li.append(spacer);
+    }
     listEl.append(li);
   }
 
@@ -337,7 +361,7 @@ async function loadCurrent(append = false, animateEnter = false) {
 }
 
 async function download(shareId, item) {
-  if (preparingId) return;
+  if (preparingId || folderAbort) return;
   preparingId = item.id;
   renderList(false);
   setStatus('loading', `Preparing ${item.name}…`);
@@ -363,10 +387,188 @@ async function download(shareId, item) {
   }
 }
 
+function safeName(name) {
+  const cleaned = String(name || 'file').replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').trim();
+  return cleaned === '' || cleaned === '.' || cleaned === '..' ? 'item' : cleaned;
+}
+
+async function listAllEntries(shareId, entryId, signal) {
+  const items = [];
+  let cursor = null;
+  do {
+    if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+    const query = new URLSearchParams();
+    if (entryId) query.set('entry', entryId);
+    if (cursor) query.set('cursor', cursor);
+    const qs = query.toString();
+    const data = await api(
+      `/v1/shares/${encodeURIComponent(shareId)}/entries${qs ? `?${qs}` : ''}`,
+      { signal }
+    );
+    items.push(...data.items);
+    cursor = data.next_cursor;
+  } while (cursor);
+  return items;
+}
+
+function makeCancelButton() {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'status-action';
+  btn.textContent = 'Cancel';
+  btn.addEventListener('click', () => {
+    if (folderAbort) folderAbort.abort();
+  });
+  return btn;
+}
+
+async function downloadFolder(shareId, entryId, folderName) {
+  if (preparingId || folderAbort) return;
+  const controller = new AbortController();
+  folderAbort = controller;
+  renderList(false);
+
+  try {
+    if (typeof window.showDirectoryPicker === 'function') {
+      const picked = await window.showDirectoryPicker({ mode: 'readwrite' });
+      const targetRoot = await picked.getDirectoryHandle(safeName(folderName), { create: true });
+      const dirs = [{ entry: entryId, dirHandle: targetRoot }];
+      let saved = 0;
+
+      while (dirs.length > 0) {
+        const next = dirs.shift();
+        const entries = await listAllEntries(shareId, next.entry, controller.signal);
+        for (const item of entries) {
+          if (controller.signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+          if (item.is_dir) {
+            const subHandle = await next.dirHandle.getDirectoryHandle(safeName(item.name), { create: true });
+            dirs.push({ entry: item.id, dirHandle: subHandle });
+          } else {
+            setStatus('loading', [
+              document.createTextNode(`Saving ${folderName}: ${item.name} (${saved} saved)`),
+              makeCancelButton(),
+            ]);
+            const query = new URLSearchParams({ entry: item.id });
+            const info = await api(
+              `/v1/shares/${encodeURIComponent(shareId)}/prepare?${query}`,
+              { signal: controller.signal }
+            );
+            query.set('revision', info.revision);
+            const response = await fetch(
+              `/v1/shares/${encodeURIComponent(shareId)}/file?${query}`,
+              { signal: controller.signal }
+            );
+            if (!response.ok || !response.body) {
+              throw new Error(`Could not download ${item.name}.`);
+            }
+            const fileHandle = await next.dirHandle.getFileHandle(safeName(item.name), { create: true });
+            const writable = await fileHandle.createWritable();
+            try {
+              await response.body.pipeTo(writable, { signal: controller.signal });
+            } catch (err) {
+              await writable.abort().catch(() => {});
+              throw err;
+            }
+            saved += 1;
+          }
+        }
+      }
+
+      setStatus(
+        'ready',
+        saved === 0
+          ? `${folderName} is empty (0 files).`
+          : `Saved ${folderName} (${saved} ${saved === 1 ? 'file' : 'files'}).`
+      );
+      return;
+    }
+
+    // Fallback for browsers without directory picker support: stream individual downloads sequentially.
+    const dirs = [entryId];
+    const files = [];
+    setStatus('loading', [
+      document.createTextNode(`Scanning ${folderName}…`),
+      makeCancelButton(),
+    ]);
+    while (dirs.length > 0) {
+      const nextEntry = dirs.shift();
+      const entries = await listAllEntries(shareId, nextEntry, controller.signal);
+      for (const item of entries) {
+        if (item.is_dir) dirs.push(item.id);
+        else files.push(item);
+      }
+    }
+    if (files.length === 0) {
+      setStatus('ready', `${folderName} is empty (0 files).`);
+      return;
+    }
+    let started = 0;
+    for (const file of files) {
+      if (controller.signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+      setStatus('loading', [
+        document.createTextNode(`Downloading ${started + 1} of ${files.length}: ${file.name}`),
+        makeCancelButton(),
+      ]);
+      const query = new URLSearchParams({ entry: file.id });
+      const info = await api(
+        `/v1/shares/${encodeURIComponent(shareId)}/prepare?${query}`,
+        { signal: controller.signal }
+      );
+      query.set('revision', info.revision);
+      const link = document.createElement('a');
+      link.href = `/v1/shares/${encodeURIComponent(shareId)}/file?${query}`;
+      link.download = file.name;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      started += 1;
+      if (started < files.length) {
+        await new Promise((resolve, reject) => {
+          const timer = setTimeout(resolve, 350);
+          controller.signal.addEventListener(
+            'abort',
+            () => {
+              clearTimeout(timer);
+              reject(new DOMException('Cancelled', 'AbortError'));
+            },
+            { once: true }
+          );
+        });
+      }
+    }
+    setStatus(
+      'ready',
+      `Started ${started} ${started === 1 ? 'file download' : 'file downloads'} from ${folderName}.`
+    );
+  } catch (error) {
+    if (error && error.name === 'AbortError') {
+      setStatus('', null);
+    } else {
+      setStatus('error', error?.message || 'Could not download this folder.');
+    }
+  } finally {
+    folderAbort = null;
+    renderList(false);
+  }
+}
+
+function extractInviteToken(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  if (trimmed.includes('#invite=')) {
+    const hash = trimmed.slice(trimmed.indexOf('#') + 1);
+    return new URLSearchParams(hash).get('invite')?.trim() || '';
+  }
+  if (trimmed.startsWith('invite=')) {
+    return new URLSearchParams(trimmed).get('invite')?.trim() || '';
+  }
+  return trimmed;
+}
+
 async function redeemToken(rawToken) {
-  const token = rawToken.trim();
+  const token = extractInviteToken(rawToken);
   if (!token) {
-    setStatus('error', 'Paste an invitation code first.');
+    setStatus('error', 'Paste an invitation code or guest link first.');
     tokenInput.focus();
     return;
   }
@@ -444,6 +646,13 @@ filterClearBtn.addEventListener('click', () => {
   updateFilterClear();
   renderList(false);
   filterInput.focus();
+});
+
+downloadFolderBtn.addEventListener('click', () => {
+  const current = stack[stack.length - 1];
+  if (current.share) {
+    void downloadFolder(current.share, current.entry, current.name);
+  }
 });
 
 document.addEventListener('keydown', event => {

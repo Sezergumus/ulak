@@ -267,6 +267,7 @@ async fn ranges_permissions_and_guest_cookies_are_enforced_over_https() {
     let response = client
         .http
         .post(client.url("/v1/guest/redeem", &[]).unwrap())
+        .header("origin", host.remote.endpoint.trim_end_matches('/'))
         .json(&GuestRedemption {
             token: invite.token,
         })
