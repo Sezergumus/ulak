@@ -388,8 +388,45 @@ async function download(shareId, item) {
 }
 
 function safeName(name) {
-  const cleaned = String(name || 'file').replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').trim();
-  return cleaned === '' || cleaned === '.' || cleaned === '..' ? 'item' : cleaned;
+  const cleaned = String(name || 'file')
+    .replace(/[\\/:*?"<>|\x00-\x1f\x7f]/g, '_')
+    .trim()
+    .replace(/[.\s]+$/, '');
+  if (!cleaned || cleaned === '.' || cleaned === '..') return 'item';
+  return /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(cleaned) ? `_${cleaned}` : cleaned;
+}
+
+function isDisallowedNameError(error) {
+  if (!error) return false;
+  return (
+    error.name === 'TypeError' ||
+    error.name === 'SecurityError' ||
+    /name is not allowed/i.test(error.message || '')
+  );
+}
+
+function triggerBrowserDownload(shareId, entryId, fileName, revision) {
+  const query = new URLSearchParams({ entry: entryId, revision });
+  const link = document.createElement('a');
+  link.href = `/v1/shares/${encodeURIComponent(shareId)}/file?${query}`;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
+function waitAbortable(ms, signal) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+        reject(new DOMException('Cancelled', 'AbortError'));
+      },
+      { once: true }
+    );
+  });
 }
 
 async function listAllEntries(shareId, entryId, signal) {
@@ -431,9 +468,15 @@ async function downloadFolder(shareId, entryId, folderName) {
   try {
     if (typeof window.showDirectoryPicker === 'function') {
       const picked = await window.showDirectoryPicker({ mode: 'readwrite' });
-      const targetRoot = await picked.getDirectoryHandle(safeName(folderName), { create: true });
+      let targetRoot = null;
+      try {
+        targetRoot = await picked.getDirectoryHandle(safeName(folderName), { create: true });
+      } catch (err) {
+        if (!isDisallowedNameError(err)) throw err;
+      }
       const dirs = [{ entry: entryId, dirHandle: targetRoot }];
       let saved = 0;
+      let fallbackCount = 0;
 
       while (dirs.length > 0) {
         const next = dirs.shift();
@@ -441,11 +484,20 @@ async function downloadFolder(shareId, entryId, folderName) {
         for (const item of entries) {
           if (controller.signal.aborted) throw new DOMException('Cancelled', 'AbortError');
           if (item.is_dir) {
-            const subHandle = await next.dirHandle.getDirectoryHandle(safeName(item.name), { create: true });
+            let subHandle = null;
+            if (next.dirHandle) {
+              try {
+                subHandle = await next.dirHandle.getDirectoryHandle(safeName(item.name), { create: true });
+              } catch (err) {
+                if (!isDisallowedNameError(err)) throw err;
+              }
+            }
             dirs.push({ entry: item.id, dirHandle: subHandle });
           } else {
             setStatus('loading', [
-              document.createTextNode(`Saving ${folderName}: ${item.name} (${saved} saved)`),
+              document.createTextNode(
+                `Saving ${folderName}: ${item.name} (${saved + fallbackCount} processed)`
+              ),
               makeCancelButton(),
             ]);
             const query = new URLSearchParams({ entry: item.id });
@@ -454,6 +506,23 @@ async function downloadFolder(shareId, entryId, folderName) {
               { signal: controller.signal }
             );
             query.set('revision', info.revision);
+
+            let fileHandle = null;
+            if (next.dirHandle) {
+              try {
+                fileHandle = await next.dirHandle.getFileHandle(safeName(item.name), { create: true });
+              } catch (err) {
+                if (!isDisallowedNameError(err)) throw err;
+              }
+            }
+
+            if (!fileHandle) {
+              triggerBrowserDownload(shareId, item.id, item.name, info.revision);
+              fallbackCount += 1;
+              await waitAbortable(350, controller.signal);
+              continue;
+            }
+
             const response = await fetch(
               `/v1/shares/${encodeURIComponent(shareId)}/file?${query}`,
               { signal: controller.signal }
@@ -461,7 +530,6 @@ async function downloadFolder(shareId, entryId, folderName) {
             if (!response.ok || !response.body) {
               throw new Error(`Could not download ${item.name}.`);
             }
-            const fileHandle = await next.dirHandle.getFileHandle(safeName(item.name), { create: true });
             const writable = await fileHandle.createWritable();
             try {
               await response.body.pipeTo(writable, { signal: controller.signal });
@@ -474,12 +542,21 @@ async function downloadFolder(shareId, entryId, folderName) {
         }
       }
 
-      setStatus(
-        'ready',
-        saved === 0
-          ? `${folderName} is empty (0 files).`
-          : `Saved ${folderName} (${saved} ${saved === 1 ? 'file' : 'files'}).`
-      );
+      if (saved === 0 && fallbackCount === 0) {
+        setStatus('ready', `${folderName} is empty (0 files).`);
+      } else if (fallbackCount > 0 && saved === 0) {
+        setStatus(
+          'ready',
+          `Sent ${fallbackCount} ${fallbackCount === 1 ? 'file' : 'files'} from ${folderName} to browser Downloads (blocked from direct folder writes).`
+        );
+      } else if (fallbackCount > 0) {
+        setStatus(
+          'ready',
+          `Saved ${saved} ${saved === 1 ? 'file' : 'files'} to ${folderName}; sent ${fallbackCount} browser-restricted ${fallbackCount === 1 ? 'file' : 'files'} to Downloads.`
+        );
+      } else {
+        setStatus('ready', `Saved ${folderName} (${saved} ${saved === 1 ? 'file' : 'files'}).`);
+      }
       return;
     }
 
@@ -514,26 +591,10 @@ async function downloadFolder(shareId, entryId, folderName) {
         `/v1/shares/${encodeURIComponent(shareId)}/prepare?${query}`,
         { signal: controller.signal }
       );
-      query.set('revision', info.revision);
-      const link = document.createElement('a');
-      link.href = `/v1/shares/${encodeURIComponent(shareId)}/file?${query}`;
-      link.download = file.name;
-      document.body.append(link);
-      link.click();
-      link.remove();
+      triggerBrowserDownload(shareId, file.id, file.name, info.revision);
       started += 1;
       if (started < files.length) {
-        await new Promise((resolve, reject) => {
-          const timer = setTimeout(resolve, 350);
-          controller.signal.addEventListener(
-            'abort',
-            () => {
-              clearTimeout(timer);
-              reject(new DOMException('Cancelled', 'AbortError'));
-            },
-            { once: true }
-          );
-        });
+        await waitAbortable(350, controller.signal);
       }
     }
     setStatus(
