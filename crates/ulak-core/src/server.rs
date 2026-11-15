@@ -75,7 +75,7 @@ fn share(api: &Api, id: &str, who: &Principal, address: IpAddr) -> ApiResult<Sha
         .map_err(|_| ApiError(StatusCode::NOT_FOUND))
 }
 
-const FAVICON_SVG: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#15181b"/><g fill="none" stroke="#5fd0b3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></g></svg>"##;
+const FAVICON_SVG: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5.5" fill="#191A1D"/><path d="M6.5 5.2v8.4c0 3.2 2.2 5.2 5.5 5.2s5.5-2 5.5-5.2V5.2h-3.1v8.2c0 1.6-.9 2.6-2.4 2.6s-2.4-1-2.4-2.6V5.2Z" fill="#EFBD77"/></svg>"##;
 
 pub fn router(core: Core, lan: LanPolicy) -> Router {
     Router::new()
@@ -524,9 +524,18 @@ pub fn onboarding_router(core: Core) -> Router {
     let certificate = core.read().ca_pem;
     let fingerprint = identity::token_hash(&certificate);
     let page = format!(
-        "<!doctype html><html lang=en><meta charset=utf-8><meta name=viewport content=width=device-width,initial-scale=1><title>Ulak browser setup</title><h1>Set up a secure connection</h1><p>This one-time setup lets your browser open files shared by this computer. Only install this certificate on a device you control.</p><h2>1. Check the security code</h2><p>On the sharing computer, open the guest invitation in Ulak. Compare its security code with this one. Continue only if they match:</p><pre style=white-space:pre-wrap;overflow-wrap:anywhere>{fingerprint}</pre><h2>2. Install the security certificate</h2><p><a href=/ulak-ca.crt>Download security certificate</a></p><p>iPhone or iPad: install the downloaded profile in Settings, then enable full trust in Settings → General → About → Certificate Trust Settings. Android: install it as a CA certificate in security settings. Remove the certificate when you no longer need access.</p><h2>3. Open your invitation</h2><p>Return to the invitation link from the sharing computer, or its secure HTTPS address. Files are available through that secure connection.</p></html>"
+        "<!doctype html><html lang=en><meta charset=utf-8><meta name=viewport content=width=device-width,initial-scale=1><link rel=icon href=/favicon.svg type=image/svg+xml><title>Ulak browser setup</title><h1>Set up a secure connection</h1><p>This one-time setup lets your browser open files shared by this computer. Only install this certificate on a device you control.</p><h2>1. Check the security code</h2><p>On the sharing computer, open the guest invitation in Ulak. Compare its security code with this one. Continue only if they match:</p><pre style=white-space:pre-wrap;overflow-wrap:anywhere>{fingerprint}</pre><h2>2. Install the security certificate</h2><p><a href=/ulak-ca.crt>Download security certificate</a></p><p>iPhone or iPad: install the downloaded profile in Settings, then enable full trust in Settings → General → About → Certificate Trust Settings. Android: install it as a CA certificate in security settings. Remove the certificate when you no longer need access.</p><h2>3. Open your invitation</h2><p>Return to the invitation link from the sharing computer, or its secure HTTPS address. Files are available through that secure connection.</p></html>"
     );
     Router::new()
+        .route(
+            "/favicon.svg",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "image/svg+xml; charset=utf-8")],
+                    FAVICON_SVG,
+                )
+            }),
+        )
         .route(
             "/",
             get(move || {
