@@ -1,17 +1,888 @@
 <!doctype html>
 <html lang="en">
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Ulak · Shared files</title>
-<style>
-body{font:16px system-ui,sans-serif;background:#18191b;color:#eee;max-width:760px;margin:40px auto;padding:20px}button,a{font:inherit;color:inherit}button{background:#303236;border:1px solid #666;border-radius:8px;padding:10px;cursor:pointer}li{padding:12px 0;border-bottom:1px solid #333}small,p{color:#bbb}a{color:#efbd77}#status{white-space:pre-wrap}input{font:inherit;padding:10px;max-width:100%;box-sizing:border-box}form{display:flex;gap:8px;flex-wrap:wrap}
-</style>
-<h1>Ulak</h1>
-<p>Browse the files shared with you. Tap a file to download it. Your browser chooses where downloads are saved.</p>
-<form id="invite"><input id="token" aria-label="Guest invitation code" placeholder="Invitation code (if needed)" autocomplete="off"><button>Open invitation</button></form>
-<p id="status" role="status"></p>
-<button id="home">Shares</button>
-<ul id="files"></ul>
-<button id="more" hidden>Load more</button>
-<script src="/guest.js" defer></script>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <title>Ulak · Shared files</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #15181b;
+      --bg-sidebar: #121518;
+      --bg-panel: #191d21;
+      --bg-chrome: rgba(21, 24, 27, 0.8);
+      --bg-hover: #222428;
+      --bg-active: #2a2c31;
+      --line: #272c31;
+      --line-row: #292b2f;
+      --line-strong: #414349;
+      --text: #e2e3e5;
+      --text-strong: #eeeff1;
+      --muted: #9b9ea5;
+      --muted-soft: #7c828c;
+      --accent: #5fd0b3;
+      --accent-soft: rgba(95, 208, 179, 0.12);
+      --accent-border: rgba(95, 208, 179, 0.3);
+      --primary-bg: #deddd8;
+      --primary-text: #202124;
+      --primary-hover: #f0efea;
+      --danger-bg: #322524;
+      --danger-border: #654640;
+      --danger-text: #edb3a3;
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+      --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      font-synthesis: none;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    button, input {
+      font: inherit;
+      color: inherit;
+    }
+
+    button {
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    a:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    svg {
+      display: block;
+      flex-shrink: 0;
+    }
+
+    .app-shell {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Translucent sticky chrome with specular hairline separator */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: var(--bg-chrome);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      backdrop-filter: blur(20px) saturate(160%);
+      border-bottom: 1px solid var(--line);
+      padding-top: env(safe-area-inset-top);
+    }
+
+    .topbar-inner {
+      max-width: 820px;
+      margin: 0 auto;
+      min-height: 54px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 4px 6px 4px 2px;
+      border-radius: 7px;
+      color: #bdc0c7;
+      transition: transform 120ms var(--ease-out), color 150ms ease;
+    }
+
+    .brand:active {
+      transform: scale(0.97);
+    }
+
+    .brand strong {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+
+    .brand-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--bg-panel);
+      border: 1px solid var(--line);
+      margin-left: 2px;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted-soft);
+      flex-shrink: 0;
+    }
+
+    .dot.live {
+      background: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 32px;
+      padding: 6px 11px;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      font-size: 12.5px;
+      font-weight: 500;
+      white-space: nowrap;
+      transition:
+        transform 120ms var(--ease-out),
+        background-color 140ms ease,
+        border-color 140ms ease,
+        color 140ms ease;
+    }
+
+    .button:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    .button.primary {
+      background: var(--primary-bg);
+      color: var(--primary-text);
+      border-color: var(--primary-bg);
+    }
+
+    .button.secondary {
+      background: #23262b;
+      color: var(--text);
+      border-color: var(--line-strong);
+    }
+
+    .button.ghost {
+      background: transparent;
+      color: #aeb1b8;
+    }
+
+    .button.icon-only {
+      width: 32px;
+      padding: 0;
+    }
+
+    .button[aria-expanded="true"] {
+      background: var(--bg-active);
+      color: var(--text-strong);
+      border-color: #555963;
+    }
+
+    .main-container {
+      flex: 1;
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 0 16px 28px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Collapsible invitation drawer using grid-row + opacity/transform */
+    .invite-wrap {
+      display: grid;
+      grid-template-rows: 0fr;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition:
+        grid-template-rows 220ms var(--ease-drawer),
+        opacity 180ms var(--ease-out),
+        transform 220ms var(--ease-out);
+      pointer-events: none;
+    }
+
+    .invite-wrap.open {
+      grid-template-rows: 1fr;
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .invite-inner {
+      overflow: hidden;
+    }
+
+    .invite-card {
+      margin-top: 14px;
+      padding: 14px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: var(--bg-panel);
+    }
+
+    .invite-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .invite-head h2 {
+      margin: 0;
+      font-size: 13.5px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text-strong);
+    }
+
+    .invite-head p {
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .invite-form {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .field-input {
+      flex: 1;
+      min-width: 200px;
+      min-height: 36px;
+      padding: 7px 10px;
+      border-radius: 7px;
+      border: 1px solid var(--line-strong);
+      background: var(--bg-input);
+      color: var(--text);
+      font-size: 13px;
+      transition: border-color 140ms ease;
+    }
+
+    .field-input::placeholder {
+      color: #828791;
+      opacity: 1;
+    }
+
+    /* Status / Notification banner */
+    .status-banner {
+      margin-top: 12px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line-strong);
+      background: var(--bg-panel);
+      color: var(--text);
+      font-size: 12.5px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+    }
+
+    .status-banner[hidden] {
+      display: none;
+    }
+
+    .status-banner.error {
+      border-color: var(--danger-border);
+      background: var(--danger-bg);
+      color: var(--danger-text);
+    }
+
+    .status-banner.ready {
+      border-color: var(--accent-border);
+      background: #1a2226;
+      color: var(--text);
+    }
+
+    .status-text {
+      flex: 1;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .status-banner a {
+      color: var(--accent);
+      font-weight: 500;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(95, 208, 179, 0.4);
+    }
+
+    .status-close {
+      width: 24px;
+      height: 24px;
+      border-radius: 5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+    }
+
+    /* List toolbar: breadcrumbs + filter */
+    .list-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      min-height: 48px;
+      padding: 8px 0;
+      margin-top: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .nav-trail {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+      flex: 1 1 260px;
+      flex-wrap: wrap;
+    }
+
+    .crumb {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 28px;
+      padding: 3px 7px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      max-width: 220px;
+      transition: background-color 120ms ease, color 120ms ease, transform 120ms var(--ease-out);
+    }
+
+    .crumb span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .crumb:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    .crumb[aria-current="page"] {
+      color: var(--text-strong);
+      font-weight: 600;
+      cursor: default;
+    }
+
+    .crumb-sep {
+      color: #5c616b;
+      flex-shrink: 0;
+    }
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 1 auto;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 30px;
+      padding: 0 8px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--bg-sidebar);
+      color: var(--muted);
+      width: 190px;
+      transition: border-color 140ms ease;
+    }
+
+    .search-box:focus-within {
+      border-color: #555963;
+    }
+
+    .search-box input {
+      width: 100%;
+      min-width: 0;
+      background: transparent;
+      border: 0;
+      padding: 0;
+      font-size: 12.5px;
+      color: var(--text);
+      outline: none;
+    }
+
+    .search-box input::placeholder {
+      color: #7c828c;
+      opacity: 1;
+    }
+
+    .search-clear {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+    }
+
+    .search-clear[hidden] {
+      display: none;
+    }
+
+    .count-pill {
+      font-size: 11px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    /* Aligned file columns */
+    .file-columns {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 84px 28px;
+      gap: 12px;
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .file-columns[hidden] {
+      display: none;
+    }
+
+    .file-columns .col-size {
+      text-align: right;
+    }
+
+    /* Compact list */
+    .file-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+    }
+
+    .file-list.entering {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+
+    .file-item {
+      border-bottom: 1px solid var(--line-row);
+    }
+
+    .list-row {
+      width: 100%;
+      min-height: 52px;
+      padding: 8px 10px;
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr) 84px 28px;
+      gap: 12px;
+      align-items: center;
+      text-align: left;
+      border-radius: 5px;
+      color: var(--text);
+      transition:
+        transform 120ms var(--ease-out),
+        background-color 130ms ease;
+    }
+
+    .list-row:active:not(:disabled) {
+      transform: scale(0.99);
+    }
+
+    .list-row.unavailable {
+      opacity: 0.55;
+    }
+
+    .row-icon {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #a1a6af;
+    }
+
+    .row-icon.folder {
+      color: #93b8d8;
+    }
+
+    .row-icon.preparing {
+      color: var(--accent);
+    }
+
+    .row-main {
+      min-width: 0;
+    }
+
+    .row-title {
+      display: block;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1.35;
+    }
+
+    .row-sub {
+      display: block;
+      font-size: 11.5px;
+      color: var(--muted);
+      margin-top: 1px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .row-sub.accent {
+      color: var(--accent);
+    }
+
+    .row-meta {
+      text-align: right;
+      font-size: 12px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .row-action {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #8b919b;
+      transition: color 130ms ease, background-color 130ms ease;
+    }
+
+    .empty-state {
+      padding: 40px 16px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .empty-state[hidden] {
+      display: none;
+    }
+
+    .empty-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--bg-panel);
+      border: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .empty-state h2 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-strong);
+    }
+
+    .empty-state p {
+      margin: 0;
+      max-width: 380px;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    .empty-state .button {
+      margin-top: 8px;
+    }
+
+    .load-more-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 16px 0 4px;
+    }
+
+    .load-more-wrap[hidden] {
+      display: none;
+    }
+
+    .footer-note {
+      max-width: 820px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+      border-top: 1px solid var(--line);
+      font-size: 11.5px;
+      color: #7f858f;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .spin {
+      animation: spin 750ms linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Gate hover styling to true pointer devices */
+    @media (hover: hover) and (pointer: fine) {
+      .brand:hover {
+        color: var(--text-strong);
+      }
+      .button.primary:hover:not(:disabled) {
+        background: var(--primary-hover);
+      }
+      .button.secondary:hover:not(:disabled) {
+        background: #2f3238;
+      }
+      .button.ghost:hover:not(:disabled),
+      .crumb:hover:not(:disabled):not([aria-current="page"]),
+      .status-close:hover,
+      .search-clear:hover {
+        background: var(--bg-hover);
+        color: var(--text-strong);
+      }
+      .list-row:hover:not(:disabled) {
+        background: var(--bg-hover);
+      }
+      .list-row:hover:not(:disabled) .row-action {
+        color: var(--text-strong);
+      }
+    }
+
+    /* Mobile layout adjustments */
+    @media (max-width: 600px) {
+      .brand-tag {
+        display: none;
+      }
+      .search-box {
+        width: 100%;
+      }
+      .toolbar-right {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .file-columns {
+        grid-template-columns: minmax(0, 1fr) 68px 24px;
+        gap: 8px;
+      }
+      .list-row {
+        min-height: 56px;
+        grid-template-columns: 22px minmax(0, 1fr) 68px 24px;
+        gap: 8px;
+        padding: 10px 6px;
+      }
+      .invite-form .button {
+        width: 100%;
+      }
+    }
+
+    /* Accessibility preferences */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+      }
+      .invite-wrap,
+      .file-list.entering,
+      .button:active:not(:disabled),
+      .list-row:active:not(:disabled),
+      .brand:active,
+      .crumb:active:not(:disabled) {
+        transform: none !important;
+      }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+      .topbar {
+        background: var(--bg);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
+    }
+
+    @media (prefers-contrast: more) {
+      :root {
+        --line: #494e57;
+        --line-row: #3d424b;
+        --line-strong: #6d7380;
+        --muted: #c2c6cf;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <button id="home" class="brand" type="button" title="Go to shared folders">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/>
+            <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/>
+            <circle cx="12" cy="12" r="2"/>
+            <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/>
+            <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/>
+          </svg>
+          <strong>ulak</strong>
+          <span class="brand-tag"><span class="dot live" aria-hidden="true"></span>Browser guest</span>
+        </button>
+
+        <div class="topbar-actions">
+          <button id="invite-toggle" class="button secondary" type="button" aria-expanded="false" aria-controls="invite-panel">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/>
+              <path d="m21 2-9.6 9.6"/>
+              <circle cx="7.5" cy="15.5" r="5.5"/>
+            </svg>
+            <span>Invitation code</span>
+          </button>
+          <button id="refresh" class="button ghost icon-only" type="button" title="Refresh list" aria-label="Refresh list">
+            <svg id="refresh-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+              <path d="M21 3v5h-5"/>
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+              <path d="M8 16H3v5"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-container">
+      <section id="invite-panel" class="invite-wrap" aria-hidden="true">
+        <div class="invite-inner">
+          <div class="invite-card">
+            <div class="invite-head">
+              <div>
+                <h2>Open a guest invitation</h2>
+                <p>Paste the single-use code from the host computer to unlock private shares.</p>
+              </div>
+              <button id="invite-close" class="status-close" type="button" aria-label="Close invitation panel">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                </svg>
+              </button>
+            </div>
+            <form id="invite" class="invite-form">
+              <input id="token" class="field-input" aria-label="Guest invitation code" placeholder="Paste invitation code" autocomplete="off" spellcheck="false">
+              <button id="invite-submit" class="button primary" type="submit">Open invitation</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <div id="status-banner" class="status-banner" role="status" aria-live="polite" hidden>
+        <span id="status-icon" aria-hidden="true"></span>
+        <span id="status" class="status-text"></span>
+        <button id="status-dismiss" class="status-close" type="button" aria-label="Dismiss message">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="list-toolbar">
+        <nav id="breadcrumbs" class="nav-trail" aria-label="Location"></nav>
+        <div class="toolbar-right">
+          <label class="search-box" aria-label="Filter items">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+            </svg>
+            <input id="filter" type="search" placeholder="Filter list" autocomplete="off" spellcheck="false">
+            <button id="filter-clear" class="search-clear" type="button" aria-label="Clear filter" hidden>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+              </svg>
+            </button>
+          </label>
+          <span id="item-count" class="count-pill"></span>
+        </div>
+      </div>
+
+      <div id="columns" class="file-columns" hidden>
+        <span>Name</span>
+        <span class="col-size" id="col-meta-label">Type</span>
+        <span></span>
+      </div>
+
+      <ul id="files" class="file-list" aria-label="Shared items"></ul>
+
+      <div id="empty" class="empty-state" hidden>
+        <div class="empty-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+          </svg>
+        </div>
+        <h2 id="empty-title">No shared files here</h2>
+        <p id="empty-desc">Shares open to everyone on the local network appear automatically. Private shares require an invitation code.</p>
+        <button id="empty-invite" class="button secondary" type="button">Enter invitation code</button>
+      </div>
+
+      <div id="more-wrap" class="load-more-wrap" hidden>
+        <button id="more" class="button secondary" type="button">Load more</button>
+      </div>
+    </main>
+
+    <footer class="footer-note">
+      <span>Read-only local connection · Files stream directly from the host</span>
+      <span>Your browser chooses where downloads are saved</span>
+    </footer>
+  </div>
+
+  <script src="/guest.js" defer></script>
+</body>
 </html>
