@@ -248,11 +248,14 @@ function renderList(animateEnter = false) {
       meta.textContent = 'File';
     }
 
+    const dlSlot = document.createElement('span');
+    dlSlot.setAttribute('aria-hidden', 'true');
+
     const action = document.createElement('span');
     action.className = 'row-action';
     action.append(createIcon(atRoot || item.is_dir ? 'chevron' : 'download', 15));
 
-    row.append(iconWrap, main, meta, action);
+    row.append(iconWrap, main, dlSlot, meta, action);
     row.addEventListener('click', () => {
       if (atRoot) {
         stack.push({ share: item.id, entry: null, name: item.name });
@@ -284,11 +287,6 @@ function renderList(animateEnter = false) {
         void downloadFolder(shareId, entryId, item.name);
       });
       li.append(dlBtn);
-    } else {
-      const spacer = document.createElement('span');
-      spacer.className = 'row-dl-spacer';
-      spacer.setAttribute('aria-hidden', 'true');
-      li.append(spacer);
     }
     listEl.append(li);
   }
