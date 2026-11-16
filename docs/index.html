@@ -637,24 +637,96 @@
               </div>
             </div>
 
-            <button
-              type="button"
-              class="orbit-center zoomable"
-              data-zoom-src="./images/nearby-radar.png"
-              data-zoom-caption-key="zoom_radar"
-              aria-label="Inspect nearby radar discovery screenshot"
-            >
-              <img
-                src="./images/nearby-radar.png"
-                alt="Ulak nearby radar discovering local Windows PCs"
-                width="960"
-                height="720"
-              />
-              <div class="orbit-center-bar">
-                <span data-i18n="orbit_bar_left">Nearby Radar</span>
-                <strong>_ulak._tcp.local.</strong>
+            <div class="orbit-center" id="orbit-radar">
+              <div class="live-radar-head">
+                <span class="live-radar-title">
+                  <span class="btn-dot" aria-hidden="true"></span>
+                  <span data-i18n="orbit_radar_head">Nearby Radar</span>
+                </span>
+                <span class="live-radar-proto">_ulak._tcp.local.</span>
               </div>
-            </button>
+
+              <div class="live-radar-stage">
+                <div class="live-radar-field" aria-hidden="true">
+                  <span class="lr-ring r1"></span>
+                  <span class="lr-ring r2"></span>
+                  <span class="lr-ring r3"></span>
+                  <span class="lr-ring r4"></span>
+                  <span class="lr-sweep"></span>
+                </div>
+
+                <div class="live-radar-core" aria-hidden="true">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="2" />
+                    <path
+                      d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"
+                    />
+                  </svg>
+                </div>
+
+                <button
+                  type="button"
+                  class="radar-chip chip-tl is-active"
+                  data-radar-device="studio"
+                  aria-pressed="true"
+                >
+                  <span class="chip-dot online" aria-hidden="true"></span>
+                  <span class="chip-name">Studio-PC</span>
+                  <span class="chip-act" data-i18n="chip_browse">Browse</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="radar-chip chip-tr"
+                  data-radar-device="thinkpad"
+                  aria-pressed="false"
+                >
+                  <span class="chip-dot nearby" aria-hidden="true"></span>
+                  <span class="chip-name">ThinkPad-X1</span>
+                  <span class="chip-act" data-i18n="chip_pair">Pair</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="radar-chip chip-bl"
+                  data-radar-device="phone"
+                  aria-pressed="false"
+                >
+                  <span class="chip-dot guest" aria-hidden="true"></span>
+                  <span class="chip-name" data-i18n="chip_phone"
+                    >Guest Phone</span
+                  >
+                  <span class="chip-act">QR</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="radar-chip chip-br"
+                  data-radar-device="archive"
+                  aria-pressed="false"
+                >
+                  <span class="chip-dot offline" aria-hidden="true"></span>
+                  <span class="chip-name">Archive-Node</span>
+                  <span class="chip-act" data-i18n="chip_offline">Offline</span>
+                </button>
+              </div>
+
+              <div class="orbit-center-bar">
+                <span id="radar-status-name">Studio-PC</span>
+                <strong id="radar-status-detail" data-i18n="radar_detail_studio"
+                  >Paired · Online · Ready to browse</strong
+                >
+              </div>
+            </div>
 
             <div class="orbit-col orbit-col-right">
               <div class="orbit-node">
@@ -1091,7 +1163,6 @@ ulak download --remote .\trusted-connection.json --share SHARE_ID --entry ENTRY_
               <li><a href="#tour" data-i18n="nav_tour">How it works</a></li>
               <li><a href="#features" data-i18n="nav_features">Features</a></li>
               <li><a href="#devices" data-i18n="nav_devices">Devices</a></li>
-              <li><a href="#download" data-i18n="nav_download">Download</a></li>
             </ul>
           </div>
 
@@ -1117,15 +1188,6 @@ ulak download --remote .\trusted-connection.json --share SHARE_ID --entry ENTRY_
                   rel="noreferrer"
                   data-i18n="footer_arch"
                   >Architecture</a
-                >
-              </li>
-              <li>
-                <a
-                  href="https://github.com/Sezergumus/ulak/blob/main/docs/phase-status.md"
-                  target="_blank"
-                  rel="noreferrer"
-                  data-i18n="footer_status"
-                  >Phase status</a
                 >
               </li>
             </ul>

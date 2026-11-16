@@ -160,7 +160,6 @@
       footer_col_repo: "Project",
       footer_proto: "Protocol v1",
       footer_arch: "Architecture",
-      footer_status: "Phase status",
       footer_license: "MIT License",
       zoom_devices:
         "Devices overview — paired PCs, nearby radar, quick shares, and live transfer bar",
@@ -172,6 +171,15 @@
         "My shares & details — inspect source paths, audiences, and guest invitations",
       zoom_radar:
         "Nearby radar — mDNS discovery finds local Ulak computers automatically",
+      orbit_radar_head: "Nearby Radar",
+      chip_browse: "Browse",
+      chip_pair: "Pair",
+      chip_phone: "Guest Phone",
+      chip_offline: "Offline",
+      radar_detail_studio: "Paired · Online · Ready to browse",
+      radar_detail_thinkpad: "Found on Wi-Fi · Pair with 6-digit code",
+      radar_detail_phone: "Browser guest · 5-min one-time QR session",
+      radar_detail_archive: "Paired · Offline · Last seen 3 hours ago",
     },
     tr: {
       page_title: "Ulak — Windows İçin Doğrudan Yerel Ağ Dosya Paylaşımı",
@@ -328,7 +336,6 @@
       footer_col_repo: "Proje",
       footer_proto: "Protokol v1",
       footer_arch: "Mimari",
-      footer_status: "Faz durumu",
       footer_license: "MIT Lisansı",
       zoom_devices:
         "Cihazlar görünümü — eşleşen bilgisayarlar, yakın radar, hızlı paylaşımlar ve aktarım çubuğu",
@@ -340,6 +347,15 @@
         "Paylaşımlarım ve detaylar — kaynak yolları, erişim izinleri ve misafir davetleri",
       zoom_radar:
         "Yakın radar — mDNS keşfi yerel ağdaki Ulak bilgisayarlarını otomatik bulur",
+      orbit_radar_head: "Yakın Radar",
+      chip_browse: "Göz at",
+      chip_pair: "Eşleştir",
+      chip_phone: "Misafir Telefon",
+      chip_offline: "Çevrimdışı",
+      radar_detail_studio: "Eşleşti · Çevrimiçi · Dosyalar gezilebilir",
+      radar_detail_thinkpad: "Wi-Fi’da bulundu · 6 haneli kodla eşleştir",
+      radar_detail_phone: "Tarayıcı misafiri · 5 dk tek seferlik QR",
+      radar_detail_archive: "Eşleşti · Çevrimdışı · Son görülme 3 saat önce",
     },
   };
 
@@ -468,6 +484,13 @@
     }
 
     renderTourStep(currentTour, false);
+
+    const activeRadar = document.querySelector("[data-radar-device].is-active");
+    const statusName = document.getElementById("radar-status-name");
+    if (activeRadar && statusName) {
+      const chipName = activeRadar.querySelector(".chip-name");
+      if (chipName) statusName.textContent = chipName.textContent;
+    }
 
     try {
       localStorage.setItem("ulak-lang", currentLang);
@@ -653,6 +676,37 @@
     bindTabs(".tour-tab", (tab) => {
       const key = tab.getAttribute("data-tour");
       if (key && key !== currentTour) renderTourStep(key, true);
+    });
+
+    // Interactive radar device chips
+    const radarDevices = {
+      studio: { name: () => "Studio-PC", key: "radar_detail_studio" },
+      thinkpad: { name: () => "ThinkPad-X1", key: "radar_detail_thinkpad" },
+      phone: {
+        name: () => COPY[currentLang].chip_phone,
+        key: "radar_detail_phone",
+      },
+      archive: { name: () => "Archive-Node", key: "radar_detail_archive" },
+    };
+    const radarChips = document.querySelectorAll("[data-radar-device]");
+    const radarStatusName = document.getElementById("radar-status-name");
+    const radarStatusDetail = document.getElementById("radar-status-detail");
+    radarChips.forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const id = chip.getAttribute("data-radar-device");
+        const info = id && radarDevices[id];
+        if (!info) return;
+        radarChips.forEach((c) => {
+          const active = c === chip;
+          c.classList.toggle("is-active", active);
+          c.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        if (radarStatusName) radarStatusName.textContent = info.name();
+        if (radarStatusDetail) {
+          radarStatusDetail.setAttribute("data-i18n", info.key);
+          radarStatusDetail.textContent = COPY[currentLang][info.key];
+        }
+      });
     });
 
     // Technical console tabs
