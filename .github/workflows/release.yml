@@ -62,7 +62,7 @@ jobs:
             '',
             '### Included files',
             '- `ulak-desktop.exe` - standalone desktop app (no installer required; embeds the UI)',
-            "- \`ulak.exe\` (inside \`ulak-$tag-windows-x64.zip\`) - local CLI tool",
+            ('- `ulak.exe` (inside `ulak-' + $tag + '-windows-x64.zip`) - local CLI tool'),
             '',
             '### Notes',
             '- Unsigned executable: Windows SmartScreen may show a warning on first launch (*More info -> Run anyway*).',
