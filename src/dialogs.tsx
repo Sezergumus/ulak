@@ -468,6 +468,7 @@ export function InviteDialog({
 }) {
   const { data } = useStore();
   const [value, setValue] = useState("");
+  const [showSetup, setShowSetup] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const create = async () => {
@@ -487,20 +488,72 @@ export function InviteDialog({
       setBusy(false);
     }
   };
+  const setupUrl = (() => {
+    if (!data?.network.onboarding || !data?.network.endpoint) return "";
+    try {
+      const url = new URL(data.network.endpoint);
+      url.protocol = "http:";
+      url.port = data.network.onboarding.slice(
+        data.network.onboarding.lastIndexOf(":") + 1,
+      );
+      return url.toString();
+    } catch {
+      return "";
+    }
+  })();
   return (
     <Dialog
       open
       onClose={onClose}
       title={share ? "Share with a browser guest" : "Connect another computer"}
-      description="Each invitation works once and expires in five minutes."
+      description={
+        share
+          ? "Create a one-time link or QR code to open this share in any browser."
+          : "Each invitation works once and expires in five minutes."
+      }
     >
       <p className="hint">
         {share
-          ? "First, set up a secure browser connection using the steps below. Then create a link for this share. Guest access ends after 30 minutes without use or eight hours in total."
+          ? "Unused links expire after five minutes. Once opened, guest access stays active for up to eight hours (or 30 minutes without activity)."
           : "Create an invitation, then paste it into Connect a device on the other computer. Choose which files it can access in My shares."}
       </p>
-      {share && (
-        <>
+      <div className="invite-actions">
+        <Button
+          disabled={busy || !data?.serving}
+          variant="default"
+          onClick={() => void create()}
+        >
+          {value ? "Create another invitation" : "Create invitation"}
+        </Button>
+        {share && (
+          <Button
+            variant="ghost"
+            aria-expanded={showSetup}
+            onClick={() => setShowSetup((open) => !open)}
+          >
+            Browser security warning?
+          </Button>
+        )}
+      </div>
+      {share && showSetup && (
+        <div className="invite-help">
+          <p className="hint">
+            Because Ulak works offline on your local network, browsers do not
+            recognize its security certificate automatically. On a computer you
+            can usually continue past the warning, or install the certificate
+            once on devices you control (recommended for iPhone and iPad).
+          </p>
+          <ol className="steps">
+            <li>
+              {setupUrl
+                ? `Open ${setupUrl} on the guest device.`
+                : "Enable the browser setup page in Connection settings, or save the certificate below and transfer it to the guest device."}
+            </li>
+            <li>
+              Compare the security code shown there with this one so you know it
+              came from this computer:
+            </li>
+          </ol>
           <label className="field">
             Security code for browser setup
             <textarea
@@ -511,47 +564,21 @@ export function InviteDialog({
             />
           </label>
           <p className="hint">
-            Compare this code with the one on the browser setup page. If they
-            match, the certificate comes from this computer. Only install it on
-            a device you control.
+            Install the certificate only on a device you control. On iPhone or
+            iPad, also turn on full trust in Settings → General → About →
+            Certificate Trust Settings.
           </p>
-          {data?.network.onboarding && (
-            <p className="hint">
-              1. Open this setup address on the guest device:{" "}
-              {(() => {
-                const url = new URL(data.network.endpoint);
-                url.protocol = "http:";
-                url.port = data.network.onboarding.slice(
-                  data.network.onboarding.lastIndexOf(":") + 1,
-                );
-                return url.toString();
-              })()}
-            </p>
-          )}
-          {!data?.network.onboarding && (
-            <p className="hint">
-              The browser setup page is off. Enable it in Connection settings,
-              or save the certificate below and move it to the guest device.
-            </p>
-          )}
-          <p className="hint">
-            2. Install the security certificate. On iPhone or iPad, also enable
-            full trust in Settings → General → About → Certificate Trust
-            Settings.
-          </p>
-          <p className="hint">
-            3. Create an invitation below, then open the link or scan its QR
-            code on the guest device.
-          </p>
-        </>
+          <Button
+            onClick={() =>
+              command("save_public", { certificate: true }).catch((error) =>
+                setError(String(error)),
+              )
+            }
+          >
+            Save security certificate
+          </Button>
+        </div>
       )}
-      <Button
-        disabled={busy || !data?.serving}
-        variant="default"
-        onClick={() => void create()}
-      >
-        {value ? "Create another invitation" : "Create invitation"}
-      </Button>
       {value && (
         <>
           <div className="qr">
@@ -566,18 +593,22 @@ export function InviteDialog({
               onFocus={(event) => event.target.select()}
             />
           </label>
+          {share && (
+            <label className="field">
+              Invitation code
+              <input
+                readOnly
+                className="mono"
+                value={
+                  new URLSearchParams(new URL(value).hash.slice(1)).get(
+                    "invite",
+                  ) ?? ""
+                }
+                onFocus={(event) => event.target.select()}
+              />
+            </label>
+          )}
         </>
-      )}
-      {share && (
-        <Button
-          onClick={() =>
-            command("save_public", { certificate: true }).catch((error) =>
-              setError(String(error)),
-            )
-          }
-        >
-          Save security certificate
-        </Button>
       )}
       {error && (
         <ErrorNotice

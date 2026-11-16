@@ -2,6 +2,7 @@ import { ShareDialog, InviteDialog, NetworkDialog } from "./dialogs";
 import { RemoteBrowser } from "./RemoteBrowser";
 import { NearbyDialog, PairingDialog } from "./NearbyDialog";
 import { CommandMenu, type MenuAction } from "./CommandMenu";
+import { Radar } from "./Radar";
 import {
   useCallback,
   useEffect,
@@ -25,7 +26,6 @@ import {
   LoaderCircle,
   Monitor,
   Plus,
-  Radio,
   RefreshCw,
   Search,
   Settings2,
@@ -70,6 +70,18 @@ const date = (timestamp: number | null) =>
   timestamp
     ? new Date(timestamp * 1000).toLocaleString("en-GB")
     : "Not connected yet";
+const lastSeen = (timestamp: number | null) => {
+  if (!timestamp) return "Not connected yet";
+  const minutes = Math.max(0, (Date.now() / 1000 - timestamp) / 60);
+  if (minutes < 2) return "Last seen just now";
+  if (minutes < 60) return `Last seen ${Math.round(minutes)} minutes ago`;
+  const hours = minutes / 60;
+  if (hours < 24)
+    return `Last seen ${Math.round(hours)} hour${Math.round(hours) === 1 ? "" : "s"} ago`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `Last seen ${days} day${days === 1 ? "" : "s"} ago`;
+  return `Last seen ${new Date(timestamp * 1000).toLocaleDateString("en-GB")}`;
+};
 
 export function App() {
   const { data, error, refresh, report, transfer } = useStore();
@@ -276,12 +288,16 @@ export function App() {
     setQuery("");
   };
   const tasks = data?.transfers.filter((item) => active(item.state)) ?? [];
+  const finished = useFinished(data?.transfers ?? [], tasks);
   const peers = Object.values(data?.peers ?? {}).sort(
     (a, b) =>
       Number(online.includes(b.remote.identity.id)) -
         Number(online.includes(a.remote.identity.id)) ||
       a.remote.identity.name.localeCompare(b.remote.identity.name),
   );
+  const onlineCount = peers.filter((peer) =>
+    online.includes(peer.remote.identity.id),
+  ).length;
   const selectedPeer = data?.peers[selected];
   const selectedShare = data?.shares.find((item) => item.share.id === selected);
   const selectedTransfer = data?.transfers.find((item) => item.id === selected);
@@ -505,7 +521,6 @@ export function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <Radio size={17} />
           <strong>ulak</strong>
         </div>
         <button
@@ -571,6 +586,44 @@ export function App() {
                 ? "My shares"
                 : "Transfers"}
           </h1>
+          {data &&
+            (() => {
+              const isLocal = localOnly(data.network);
+              const stopped = !data.serving;
+              const pillClass =
+                stopped || isLocal
+                  ? "warn"
+                  : onlineCount || data.network.advertise
+                    ? "good"
+                    : "";
+              const pillText = stopped
+                ? "Sharing is stopped"
+                : isLocal
+                  ? "Not visible to other devices"
+                  : onlineCount
+                    ? `Connected · ${onlineCount} device${onlineCount === 1 ? "" : "s"} online`
+                    : data.network.advertise
+                      ? "Visible on your network"
+                      : "Reachable by link only";
+              const handlePillClick = () => {
+                if (stopped || (!isLocal && !onlineCount && !data.network.advertise)) {
+                  setModal({ kind: "network" });
+                } else if (isLocal) {
+                  setModal({ kind: "connect" });
+                } else {
+                  navigate("devices");
+                }
+              };
+              return (
+                <button
+                  className={`status-pill ${pillClass}`}
+                  onClick={handlePillClick}
+                >
+                  <span className="dot" />
+                  {pillText}
+                </button>
+              );
+            })()}
           <div className="actions">
             {view === "devices" && (
               <Button
@@ -648,7 +701,7 @@ export function App() {
                   onClick={() => void scan()}
                 >
                   <RefreshCw size={15} className={scanning ? "spin" : ""} />
-                  {scanning ? "Scanning" : "Scan network"}
+                  {scanning ? "Searching…" : "Search again"}
                 </Button>
               ) : null}
             </div>
@@ -656,16 +709,49 @@ export function App() {
               <>
                 {data && localOnly(data.network) && (
                   <div className="setup-notice">
-                    <p>Other devices cannot reach this computer yet.</p>
-                    <Button onClick={() => setModal({ kind: "connect" })}>
-                      Set up network sharing
+                    <Wifi size={18} />
+                    <p>
+                      <b>Only this computer can see Ulak right now.</b>
+                      <small>
+                        Turn on network sharing so your other computers can find
+                        it.
+                      </small>
+                    </p>
+                    <Button
+                      variant="default"
+                      onClick={() => setModal({ kind: "connect" })}
+                    >
+                      Turn on
                     </Button>
                   </div>
                 )}
-                <SectionLabel
-                  label="Saved devices"
-                  extra={`${peers.filter((peer) => online.includes(peer.remote.identity.id)).length} online · ${peers.length} saved`}
-                />
+                {!peers.length && !query && (
+                  <Radar
+                    devices={visibleFound}
+                    scanning={scanning}
+                    dimmed={!!data && localOnly(data.network)}
+                    label="Nearby devices"
+                    onSelect={(device) => {
+                      const item = visibleFound.find((d) => d.id === device.id);
+                      if (item) void run(() => pairNearby(item));
+                    }}
+                    status={
+                      data && localOnly(data.network)
+                        ? "Turn on network sharing to look for nearby computers."
+                        : scanning
+                          ? "Looking for nearby computers…"
+                          : visibleFound.length
+                            ? "Choose a computer to pair with it."
+                            : "No computers nearby yet. Open Ulak on another computer on the same network."
+                    }
+                  />
+                )}
+                {(peers.length > 0 || !!query) && (
+                  <SectionLabel
+                    label="Your devices"
+                    extra={`${onlineCount} of ${peers.length} online`}
+                  />
+                )}
                 {visiblePeers.map((peer) => (
                   <button
                     key={peer.remote.identity.id}
@@ -691,8 +777,8 @@ export function App() {
                       {peer.remote.identity.name}
                       <small>
                         {online.includes(peer.remote.identity.id)
-                          ? "Connected securely"
-                          : `Last connected: ${date(peer.last_connected)}`}
+                          ? "Ready to browse"
+                          : lastSeen(peer.last_connected)}
                       </small>
                     </span>
                     <span className="status">
@@ -706,51 +792,42 @@ export function App() {
                     <ChevronRight size={15} />
                   </button>
                 ))}
-                {!peers.length && (
-                  <Empty
-                    icon={<Monitor size={30} />}
-                    title="No saved devices"
-                    text="Connect a computer to browse its shares."
-                    action={
-                      <Button onClick={() => setModal({ kind: "connect" })}>
-                        <Link size={15} />
-                        Connect a device
-                      </Button>
-                    }
-                  />
-                )}
                 {peers.length > 0 && !visiblePeers.length && (
                   <p className="quiet">No saved devices match “{query}”.</p>
                 )}
-                <SectionLabel
-                  label="Found on the network"
-                  extra="Updates automatically"
-                />
-                {visibleFound.map((item) => (
-                  <div className="list-row" key={item.id}>
-                    <span className="item-icon">
-                      <Wifi size={21} />
-                    </span>
-                    <span className="row-name">
-                      {item.name}
-                      <small>Ready to pair</small>
-                    </span>
-                    <Button
-                      data-list-item
-                      onClick={() => void run(() => pairNearby(item))}
-                    >
-                      Pair
-                    </Button>
-                  </div>
-                ))}
-                {!visibleFound.length && (
-                  <p className="quiet">
-                    {scanning
-                      ? "Looking for Ulak devices on your network…"
-                      : query
-                        ? `No discovered devices match “${query}”.`
-                        : "No new devices found. Keep Ulak open on the other computer. This list refreshes every 30 seconds."}
-                  </p>
+                {(peers.length > 0 || !!query) && (
+                  <>
+                    <SectionLabel
+                      label="Nearby"
+                      extra="New computers you can pair"
+                    />
+                    {visibleFound.map((item) => (
+                      <div className="list-row" key={item.id}>
+                        <span className="item-icon">
+                          <Wifi size={21} />
+                        </span>
+                        <span className="row-name">
+                          {item.name}
+                          <small>Ready to pair</small>
+                        </span>
+                        <Button
+                          data-list-item
+                          onClick={() => void run(() => pairNearby(item))}
+                        >
+                          Pair
+                        </Button>
+                      </div>
+                    ))}
+                    {!visibleFound.length && (
+                      <p className="quiet">
+                        {scanning
+                          ? "Looking for Ulak devices on your network…"
+                          : query
+                            ? `No discovered devices match “${query}”.`
+                            : "Nothing new nearby. Open Ulak on another computer and it appears here."}
+                      </p>
+                    )}
+                  </>
                 )}
                 {!!data?.shares.length && !query && (
                   <div className="recent-shares">
@@ -1113,42 +1190,16 @@ export function App() {
             </aside>
           )}
         </div>
-        <footer className="transfer-dock">
-          {tasks.length ? (
-            <>
-              <LoaderCircle size={17} className="spin" />
-              <span>
-                <b>{tasks[0].file.name}</b>
-                <small>
-                  {transferLabel[tasks[0].state]} ·{" "}
-                  {size(tasks[0].bytes_per_second)}/s
-                  {tasks.length > 1 ? ` · +${tasks.length - 1} more` : ""}
-                </small>
-              </span>
-              <Progress transfer={tasks[0]} />
-              <Button
-                variant="ghost"
-                onClick={() =>
-                  run(() =>
-                    request({ command: "cancel", transfer: tasks[0].id }),
-                  )
-                }
-              >
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <>
-              <span className={`dot ${data?.serving ? "green" : ""}`} />
-              <span>
-                {preparing ? "Preparing download…" : "No active transfers"}
-              </span>
-            </>
-          )}
-          <Button variant="ghost" onClick={() => navigate("transfers")}>
-            Transfers <ArrowRight size={14} />
-          </Button>
-        </footer>
+        <TransferDock
+          tasks={tasks}
+          finished={finished}
+          preparing={preparing}
+          serving={!!data?.serving}
+          onOpen={() => navigate("transfers")}
+          onCancel={(id) =>
+            run(() => request({ command: "cancel", transfer: id }))
+          }
+        />
       </div>
       {drop && (
         <div className="drop-overlay">
@@ -1304,7 +1355,7 @@ function Progress({ transfer }: { transfer: Transfer }) {
       aria-valuemax={100}
       aria-valuenow={Math.floor(percent)}
     >
-      <span style={{ width: `${percent}%` }} />
+      <span style={{ transform: `scaleX(${percent / 100})` }} />
     </div>
   );
 }
@@ -1336,5 +1387,131 @@ function TransferActions({
       <ShieldCheck size={16} />
       File checked and saved
     </p>
+  );
+}
+
+// Remember a download that just finished in this window, so the dock can
+// briefly confirm it instead of silently returning to idle.
+function useFinished(transfers: Transfer[], tasks: Transfer[]) {
+  const watched = useRef(new Set<string>());
+  const [finished, setFinished] = useState<Transfer | null>(null);
+  const activeIds = tasks.map((item) => item.id).join(",");
+  useEffect(() => {
+    for (const id of watched.current) {
+      const item = transfers.find((transfer) => transfer.id === id);
+      if (item && !active(item.state)) {
+        watched.current.delete(id);
+        if (item.state === "completed") setFinished(item);
+      }
+    }
+    for (const task of tasks) watched.current.add(task.id);
+  }, [activeIds, transfers]);
+  useEffect(() => {
+    if (!finished) return;
+    const timer = window.setTimeout(() => setFinished(null), 5000);
+    return () => clearTimeout(timer);
+  }, [finished]);
+  return tasks.length ? null : finished;
+}
+
+function remaining(transfer: Transfer) {
+  if (transfer.state !== "transferring" || transfer.bytes_per_second <= 0)
+    return "";
+  const seconds =
+    Math.max(0, transfer.file.size - transfer.written) /
+    transfer.bytes_per_second;
+  if (seconds < 10) return "a few seconds left";
+  if (seconds < 60) return `${Math.round(seconds)} seconds left`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60)
+    return `about ${minutes} minute${minutes === 1 ? "" : "s"} left`;
+  return `about ${Math.round(minutes / 60)} h left`;
+}
+
+function TransferDock({
+  tasks,
+  finished,
+  preparing,
+  serving,
+  onOpen,
+  onCancel,
+}: {
+  tasks: Transfer[];
+  finished: Transfer | null;
+  preparing: number;
+  serving: boolean;
+  onOpen: () => void;
+  onCancel: (id: string) => void;
+}) {
+  const current = tasks[0];
+  if (current) {
+    const percent = current.file.size
+      ? Math.min(100, Math.floor((100 * current.written) / current.file.size))
+      : 0;
+    const left = remaining(current);
+    return (
+      <footer className="transfer-dock card">
+        <span className="dock-file">
+          <File size={18} />
+        </span>
+        <div className="dock-body">
+          <div className="dock-title">
+            <span>
+              <small>
+                {transferLabel[current.state]} from{" "}
+                {current.remote.identity.name}
+              </small>
+              <b>{current.file.name}</b>
+            </span>
+            {current.state === "transferring" &&
+              current.bytes_per_second > 0 && (
+                <span className="dock-speed">
+                  {size(current.bytes_per_second)}/s
+                </span>
+              )}
+          </div>
+          <Progress transfer={current} />
+          <div className="dock-meta">
+            <span>
+              <em>{percent}%</em> · {size(current.written)} of{" "}
+              {size(current.file.size)}
+              {left ? ` · ${left}` : ""}
+            </span>
+            {tasks.length > 1 && (
+              <button className="dock-more" onClick={onOpen}>
+                +{tasks.length - 1} more
+              </button>
+            )}
+          </div>
+        </div>
+        <Button variant="ghost" onClick={() => onCancel(current.id)}>
+          Cancel
+        </Button>
+      </footer>
+    );
+  }
+  return (
+    <footer className={`transfer-dock ${finished ? "done" : ""}`}>
+      {finished ? (
+        <>
+          <span className="dock-check">
+            <Check size={14} />
+          </span>
+          <span>
+            <b>{finished.file.name}</b> downloaded and checked
+          </span>
+        </>
+      ) : (
+        <>
+          <span className={`dot ${serving ? "green" : ""}`} />
+          <span>
+            {preparing ? "Preparing download…" : "No active transfers"}
+          </span>
+        </>
+      )}
+      <Button variant="ghost" onClick={onOpen}>
+        Transfers <ArrowRight size={14} />
+      </Button>
+    </footer>
   );
 }

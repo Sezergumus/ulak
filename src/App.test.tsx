@@ -252,7 +252,7 @@ describe("desktop access and transfer flows", () => {
     expect(screen.queryByText("File checked and saved")).toBeNull();
     await user.click(screen.getByRole("button", { name: /My shares/ }));
     expect(screen.getByText("large.bin")).toBeTruthy();
-    expect(screen.getByText(/Checking file ·/)).toBeTruthy();
+    expect(screen.getByText(/Checking file from Studio PC/)).toBeTruthy();
   });
 
   it("returns from network setup to connecting a device and preserves the original sharing dialog", async () => {

@@ -11,6 +11,7 @@ import { Dialog } from "./components/ui/dialog";
 import { Button } from "./components/ui/button";
 import { ErrorNotice } from "./components/ErrorNotice";
 import { ConnectDialog } from "./dialogs";
+import { Radar, RADAR_CAPACITY } from "./Radar";
 import { command, useStore } from "./store";
 import {
   localOnly,
@@ -49,6 +50,7 @@ export function NearbyDialog({
   const [error, setError] = useState("");
   const [manual, setManual] = useState(!!initialMode);
   const search = useRef<HTMLInputElement>(null);
+  const firstDevice = useRef<HTMLButtonElement>(null);
   const needsNetwork = !data || localOnly(data.network);
   useEffect(() => {
     let active = true;
@@ -105,6 +107,18 @@ export function NearbyDialog({
         .map((device) => [device.id, device]),
     ).values(),
   ].filter((device) => device.name.toLowerCase().includes(query.toLowerCase()));
+  const many = found.length + (target ? 1 : 0) > RADAR_CAPACITY;
+  const pair = async (device: Discovered) => {
+    setBusy(device.id);
+    setError("");
+    try {
+      await onPair(device);
+    } catch (error) {
+      setError(String(error));
+    } finally {
+      setBusy("");
+    }
+  };
   if (manual)
     return (
       <ConnectDialog
@@ -123,9 +137,9 @@ export function NearbyDialog({
       description={
         needsNetwork
           ? "Choose the network your other computer uses. Ulak will find devices there."
-          : "Keep Ulak open on the other computer. Select it below to pair."
+          : "Open Ulak on your other computer. It shows up here when it is nearby."
       }
-      initialFocusRef={search}
+      initialFocusRef={many ? search : firstDevice}
     >
       {needsNetwork ? (
         <>
@@ -162,18 +176,61 @@ export function NearbyDialog({
         </>
       ) : (
         <>
-          <label className="search nearby-search">
-            <Search size={16} />
-            <input
-              ref={search}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Find a nearby device…"
-              aria-label="Find a nearby device"
-            />
-          </label>
+          {many && (
+            <label className="search nearby-search">
+              <Search size={16} />
+              <input
+                ref={search}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Find a nearby device…"
+                aria-label="Find a nearby device"
+              />
+            </label>
+          )}
+          <Radar
+            devices={candidates}
+            scanning={scanning}
+            busy={busy}
+            label="Nearby devices"
+            firstRef={firstDevice}
+            onSelect={(device) =>
+              void pair(candidates.find((item) => item.id === device.id)!)
+            }
+            status={
+              scanning
+                ? "Looking for nearby computers…"
+                : candidates.length
+                  ? "Choose a computer to pair with it."
+                  : query
+                    ? "No devices match your search."
+                    : "Nothing found yet. Open Ulak on the other computer and use the same Wi-Fi or network."
+            }
+          />
+          {candidates.length > RADAR_CAPACITY && (
+            <div className="nearby-list">
+              {candidates.slice(RADAR_CAPACITY).map((device) => (
+                <button
+                  className="nearby-device"
+                  key={device.id}
+                  disabled={!!busy}
+                  onClick={() => void pair(device)}
+                >
+                  <Monitor size={20} />
+                  <span>
+                    <b>{device.name}</b>
+                    <small>Ready to pair</small>
+                  </span>
+                  {busy === device.id ? (
+                    <LoaderCircle size={16} className="spin" />
+                  ) : (
+                    <span className="nearby-pair-label">Pair</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="nearby-heading">
-            <span>{scanning ? "Looking for devices…" : "Nearby devices"}</span>
             <Button
               variant="ghost"
               disabled={scanning || !!busy}
@@ -182,44 +239,6 @@ export function NearbyDialog({
               <RefreshCw size={14} className={scanning ? "spin" : ""} />
               Search again
             </Button>
-          </div>
-          <div className="nearby-list">
-            {candidates.map((device) => (
-              <button
-                className="nearby-device"
-                key={device.id}
-                disabled={!!busy}
-                onClick={async () => {
-                  setBusy(device.id);
-                  setError("");
-                  try {
-                    await onPair(device);
-                  } catch (error) {
-                    setError(String(error));
-                  } finally {
-                    setBusy("");
-                  }
-                }}
-              >
-                <Monitor size={22} />
-                <span>
-                  <b>{device.name}</b>
-                  <small>Ready to pair</small>
-                </span>
-                {busy === device.id ? (
-                  <LoaderCircle size={16} className="spin" />
-                ) : (
-                  <span className="nearby-pair-label">Pair</span>
-                )}
-              </button>
-            ))}
-            {!candidates.length && (
-              <p className="quiet">
-                {query
-                  ? "No devices match your search."
-                  : "No devices found yet. Check that both computers use the same network and have nearby sharing turned on."}
-              </p>
-            )}
           </div>
         </>
       )}

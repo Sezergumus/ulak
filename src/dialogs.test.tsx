@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ConnectDialog, NetworkDialog } from "./dialogs";
+import { ConnectDialog, InviteDialog, NetworkDialog } from "./dialogs";
 import { NearbyDialog, PairingDialog } from "./NearbyDialog";
 import { useStore } from "./store";
 import type { Snapshot } from "./types";
@@ -356,5 +356,26 @@ describe("simple connection setup", () => {
         },
       }),
     );
+  });
+
+  it("keeps browser certificate setup behind a helpful toggle and surfaces the invitation code", async () => {
+    const user = userEvent.setup();
+    render(<InviteDialog share="share-1" onClose={vi.fn()} />);
+    expect(screen.queryByText(/Security code for browser setup/)).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Create invitation" }));
+    expect(
+      (
+        (await screen.findByRole("textbox", {
+          name: "Invitation code",
+        })) as HTMLInputElement
+      ).value,
+    ).toBe("one-use-secret");
+    await user.click(
+      screen.getByRole("button", { name: "Browser security warning?" }),
+    );
+    expect(screen.getByText(/Security code for browser setup/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Save security certificate" }),
+    ).toBeTruthy();
   });
 });
