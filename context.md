@@ -1,4 +1,4 @@
-# ULAK — v1 Architecture & Implementation Specification
+# ULAK - v1 Architecture & Implementation Specification
 
 Implementation progress and executed checks are recorded in [docs/phase-status.md](docs/phase-status.md). Technical prototypes and manual validation procedures are documented in [docs/feasibility.md](docs/feasibility.md).
 

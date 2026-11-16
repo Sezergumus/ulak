@@ -239,7 +239,7 @@ function renderList(animateEnter = false) {
     const meta = document.createElement('span');
     meta.className = 'row-meta';
     if (unavailable) {
-      meta.textContent = '—';
+      meta.textContent = '-';
     } else if (item.is_dir) {
       meta.textContent = 'Folder';
     } else if (typeof item.size === 'number') {

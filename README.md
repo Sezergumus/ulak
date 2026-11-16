@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="docs/images/og-banner.png" alt="Ulak — Direct local-network file sharing across Windows PCs and browser guests" width="900" />
+  <img src="docs/images/og-banner.png" alt="Ulak: Direct local-network file sharing across Windows PCs and browser guests" width="900" />
 </p>
 
 # Ulak
 
 **Offline, zero-staging local-network file sharing for Windows PCs and browser guests.**
 
-Ulak lets a Windows PC expose selected files and folders directly from their original location over an encrypted local network connection—without cloud relays, user accounts, internet access, or staging copies. Paired computers and temporary browser guests browse permitted shares and pull only the files they want.
+Ulak lets a Windows PC expose selected files and folders directly from their original location over an encrypted local network connection, without cloud relays, user accounts, internet access, or staging copies. Paired computers and temporary browser guests browse permitted shares and pull only the files they want.
 
 [Highlights](#highlights) · [Visual Tour](#visual-tour) · [Keyboard Shortcuts](#keyboard-shortcuts) · [Architecture](#architecture) · [CLI Usage](#live-local-cli) · [Development](#development) · [Status & Guarantees](#limits-guarantees-and-status)
 
@@ -14,15 +14,15 @@ Ulak lets a Windows PC expose selected files and folders directly from their ori
 
 ## Highlights
 
-- **Files stay where they are** — Publishing registers a source reference under an opaque share ID. No copies are staged in app storage and no temporary ZIP archives are created.
-- **Bounded-memory streaming** — Files stream directly from Windows source handles using 64 KiB I/O buffers, keeping transfer memory independent of file size.
-- **Persistent cryptographic identity** — Devices are identified by persistent Ed25519 keys rather than IP addresses or hostnames. Switching between Wi-Fi and Ethernet or renewing a DHCP lease updates the verified endpoint without breaking pairing or share permissions.
-- **Nearby numeric pairing** — Discover Ulak PCs on the local network via mDNS (`_ulak._tcp.local.`) and pair by confirming the same 6-digit comparison number on both screens—no certificate strings to copy and paste. Single-use invitations remain available when multicast is unavailable.
-- **Explicit share audiences** — Grant access per share to **Invitation only**, **Choose devices** (including currently offline paired PCs), or **Everyone on the local network** (read-only within configured allowed LAN ranges).
-- **Resumable, BLAKE3-verified downloads** — Native transfers persist flushed byte offsets in `.part` files, validate HTTP byte ranges and source revisions on resume, verify complete-file BLAKE3 digests, and finalize without overwriting existing files.
-- **Browser guest mode (no app install)** — Share a QR code or single-use link with phones, tablets, or other browsers over local HTTPS using a locally bundled, zero-external-request interface.
-- **Windows Explorer integration** — Drag local files/folders into Ulak to share them, or prepare selected remote files for lazy range-backed virtual-file drag-out into Explorer.
-- **Keyboard-first desktop + local CLI** — Summon from anywhere with `Ctrl+Alt+U`, jump across devices/shares/actions with `Ctrl+K`, or script shares and downloads with the `ulak` CLI over a current-user-only Windows named pipe.
+- **Files stay where they are**: Publishing registers a source reference under an opaque share ID. No copies are staged in app storage and no temporary ZIP archives are created.
+- **Bounded-memory streaming**: Files stream directly from Windows source handles using 64 KiB I/O buffers, keeping transfer memory independent of file size.
+- **Persistent cryptographic identity**: Devices are identified by persistent Ed25519 keys rather than IP addresses or hostnames. Switching between Wi-Fi and Ethernet or renewing a DHCP lease updates the verified endpoint without breaking pairing or share permissions.
+- **Nearby numeric pairing**: Discover Ulak PCs on the local network via mDNS (`_ulak._tcp.local.`) and pair by confirming the same 6-digit comparison number on both screens, with no certificate strings to copy and paste. Single-use invitations remain available when multicast is unavailable.
+- **Explicit share audiences**: Grant access per share to **Invitation only**, **Choose devices** (including currently offline paired PCs), or **Everyone on the local network** (read-only within configured allowed LAN ranges).
+- **Resumable, BLAKE3-verified downloads**: Native transfers persist flushed byte offsets in `.part` files, validate HTTP byte ranges and source revisions on resume, verify complete-file BLAKE3 digests, and finalize without overwriting existing files.
+- **Browser guest mode (no app install)**: Share a QR code or single-use link with phones, tablets, or other browsers over local HTTPS using a locally bundled, zero-external-request interface.
+- **Windows Explorer integration**: Drag local files/folders into Ulak to share them, or prepare selected remote files for lazy range-backed virtual-file drag-out into Explorer.
+- **Keyboard-first desktop + local CLI**: Summon from anywhere with `Ctrl+Alt+U`, jump across devices/shares/actions with `Ctrl+K`, or script shares and downloads with the `ulak` CLI over a current-user-only Windows named pipe.
 
 ---
 
@@ -38,17 +38,17 @@ The compact desktop opens on **Devices**, showing persistently paired computers 
 
 ### 1. Discover Nearby PCs & Pair with a 6-Digit Number
 
-Open **Devices** or **Connect a device**, pick your Wi-Fi or Ethernet network when sharing beyond loopback, and select a nearby Ulak computer from the radar or device list. Both sides run a commit-before-reveal signed exchange and display the same 6-digit number—confirm **Match and pair** on both computers to save trust. Pairing alone never exposes private files.
+Open **Devices** or **Connect a device**, pick your Wi-Fi or Ethernet network when sharing beyond loopback, and select a nearby Ulak computer from the radar or device list. Both sides run a commit-before-reveal signed exchange and display the same 6-digit number; confirm **Match and pair** on both computers to save trust. Pairing alone never exposes private files.
 
 <table>
   <tr>
     <td width="50%">
       <img src="docs/images/nearby-radar.png" alt="Ulak nearby discovery radar showing discovered local computers" />
-      <br /><sub><b>Nearby Radar</b> — Live mDNS discovery candidates appear around the radar stage for one-click pairing.</sub>
+      <br /><sub><b>Nearby Radar</b>: Live mDNS discovery candidates appear around the radar stage for one-click pairing.</sub>
     </td>
     <td width="50%">
       <img src="docs/images/numeric-pairing.png" alt="Six-digit numeric comparison dialog for pairing two Ulak computers" />
-      <br /><sub><b>Numeric Comparison</b> — Both computers verify the transcript-bound 6-digit code before persisting trust.</sub>
+      <br /><sub><b>Numeric Comparison</b>: Both computers verify the transcript-bound 6-digit code before persisting trust.</sub>
     </td>
   </tr>
 </table>
@@ -63,11 +63,11 @@ Add files or folders with **Add share**, **Add folder**, or by dropping them fro
   <tr>
     <td width="50%">
       <img src="docs/images/shares-details.png" alt="My shares view with share list and selected share details panel" />
-      <br /><sub><b>My Shares & Details</b> — Inspect original source paths, active audiences, and browser guest controls without leaving the list.</sub>
+      <br /><sub><b>My Shares & Details</b>: Inspect original source paths, active audiences, and browser guest controls without leaving the list.</sub>
     </td>
     <td width="50%">
       <img src="docs/images/audience-picker.png" alt="Who can access dialog showing Invitation only, Choose devices, and Everyone on the local network" />
-      <br /><sub><b>Explicit Audiences</b> — Restrict to invitations, pick specific online/offline paired devices, or open read-only access to the local network.</sub>
+      <br /><sub><b>Explicit Audiences</b>: Restrict to invitations, pick specific online/offline paired devices, or open read-only access to the local network.</sub>
     </td>
   </tr>
 </table>
@@ -82,11 +82,11 @@ Click any online paired device (or browse LAN-open shares without pairing) to in
   <tr>
     <td width="50%">
       <img src="docs/images/remote-browser.png" alt="Remote device folder browser with multi-select checkboxes and Explorer drag-out handle" />
-      <br /><sub><b>Remote Browser & Drag Handle</b> — Multi-select remote files, download directly, or drag virtual-file streams into Explorer.</sub>
+      <br /><sub><b>Remote Browser & Drag Handle</b>: Multi-select remote files, download directly, or drag virtual-file streams into Explorer.</sub>
     </td>
     <td width="50%">
       <img src="docs/images/transfers.png" alt="Transfers view showing active download progress, BLAKE3 file checking, and completed download" />
-      <br /><sub><b>Transfers</b> — Distinct states for <i>Downloading</i>, <i>Checking file</i> (BLAKE3 verification), and <i>Downloaded</i>, with cancel and resume support.</sub>
+      <br /><sub><b>Transfers</b>: Distinct states for <i>Downloading</i>, <i>Checking file</i> (BLAKE3 verification), and <i>Downloaded</i>, with cancel and resume support.</sub>
     </td>
   </tr>
 </table>
@@ -95,17 +95,17 @@ Click any online paired device (or browse LAN-open shares without pairing) to in
 
 ### 4. Browser Guest Mode & QR Invitations
 
-Need to send files to a phone or a computer without Ulak installed? Generate a single-use QR code or guest link from any share's **Guest invitation** panel. Guests open a self-contained dark web UI served directly from your PC over local HTTPS—with folder navigation, instant filtering, and native browser downloads. Plain-English setup instructions and a **Security code for browser setup** guide manual local CA certificate trust on iOS/Android/desktop browsers when needed.
+Need to send files to a phone or a computer without Ulak installed? Generate a single-use QR code or guest link from any share's **Guest invitation** panel. Guests open a self-contained dark web UI served directly from your PC over local HTTPS, with folder navigation, instant filtering, and native browser downloads. Plain-English setup instructions and a **Security code for browser setup** guide manual local CA certificate trust on iOS/Android/desktop browsers when needed.
 
 <table>
   <tr>
     <td width="50%">
       <img src="docs/images/guest-qr.png" alt="Share with a browser guest dialog displaying a QR code and single-use guest link" />
-      <br /><sub><b>QR & One-Time Guest Link</b> — Unused links expire in 5 minutes; redeemed sessions stay active up to 8 hours (or 30 minutes idle) and can be revoked anytime.</sub>
+      <br /><sub><b>QR & One-Time Guest Link</b>: Unused links expire in 5 minutes; redeemed sessions stay active up to 8 hours (or 30 minutes idle) and can be revoked anytime.</sub>
     </td>
     <td width="50%">
       <img src="docs/images/guest-browser.png" alt="Bundled offline guest web interface showing shared folders and files with filter and download actions" />
-      <br /><sub><b>Offline Guest Web UI</b> — Locally bundled HTML/JS/CSS with zero external network requests.</sub>
+      <br /><sub><b>Offline Guest Web UI</b>: Locally bundled HTML/JS/CSS with zero external network requests.</sub>
     </td>
   </tr>
 </table>
@@ -155,10 +155,10 @@ ulak/
 
 Further documentation:
 
-- [context.md](context.md) — Architecture and UX implementation contract
-- [docs/protocol.md](docs/protocol.md) — Identity, pairing handshake, HTTPS API, authorization, and transfer recovery
-- [docs/phase-status.md](docs/phase-status.md) — Recorded automated checks vs. pending physical hardware checks
-- [docs/feasibility.md](docs/feasibility.md) — Manual verification procedures for mobile HTTPS, Explorer drag-out, and 50 GB transfers
+- [context.md](context.md) - Architecture and UX implementation contract
+- [docs/protocol.md](docs/protocol.md) - Identity, pairing handshake, HTTPS API, authorization, and transfer recovery
+- [docs/phase-status.md](docs/phase-status.md) - Recorded automated checks vs. pending physical hardware checks
+- [docs/feasibility.md](docs/feasibility.md) - Manual verification procedures for mobile HTTPS, Explorer drag-out, and 50 GB transfers
 
 ---
 
@@ -248,9 +248,9 @@ Once built, you can also launch or focus the existing desktop instance via `Ulak
 
 ### Smoke Suites
 
-- `.\scripts\smoke.ps1` — Separate host/recipient `ulak-agent` processes verifying HTTPS identity, LAN-open browsing, and file download comparison.
-- `.\scripts\desktop-smoke.ps1` — Launches an isolated WebView desktop instance, tests keyboard navigation, layout bounds, audience changes, guest redemption/replay rejection, CLI downloads, network rollback, close-to-tray continuity, and explicit quit.
-- `.\scripts\nearby-smoke.ps1` — Starts two isolated desktop instances to exercise 6-digit numeric comparison, dual approval, rejection, private-share isolation, paired download verification, and global `Ctrl+Alt+U` activation (set `$env:ULAK_TEST_NEARBY_MULTICAST = '1'` to test local-adapter mDNS discovery).
+- `.\scripts\smoke.ps1` - Separate host/recipient `ulak-agent` processes verifying HTTPS identity, LAN-open browsing, and file download comparison.
+- `.\scripts\desktop-smoke.ps1` - Launches an isolated WebView desktop instance, tests keyboard navigation, layout bounds, audience changes, guest redemption/replay rejection, CLI downloads, network rollback, close-to-tray continuity, and explicit quit.
+- `.\scripts\nearby-smoke.ps1` - Starts two isolated desktop instances to exercise 6-digit numeric comparison, dual approval, rejection, private-share isolation, paired download verification, and global `Ctrl+Alt+U` activation (set `$env:ULAK_TEST_NEARBY_MULTICAST = '1'` to test local-adapter mDNS discovery).
 
 ---
 

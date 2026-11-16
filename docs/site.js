@@ -4,13 +4,13 @@
 
   const COPY = {
     en: {
-      page_title: "Ulak — Direct Local-Network File Sharing for Windows",
+      page_title: "Ulak - Direct Local-Network File Sharing for Windows",
       nav_tour: "How it works",
       nav_features: "Features",
       nav_devices: "Devices",
       nav_tech: "Under the hood",
       nav_download: "Download",
-      hero_pill: "v0.1.0-alpha · Windows 10/11 · Offline LAN",
+      hero_pill: "v0.1.0-alpha · Windows",
       hero_title_1: "Share Files Directly",
       hero_title_2: "Without The Cloud",
       hero_lead:
@@ -79,11 +79,11 @@
       kbd_filter: "Filter list",
       b7_title: "Recognizes your PC even when IP changes",
       b7_desc:
-        "Switched from Wi-Fi to Ethernet cable? Ulak remembers each paired computer by its own identity—not a temporary router address.",
+        "Switched from Wi-Fi to Ethernet cable? Ulak remembers each paired computer by its own identity, not a temporary router address.",
       orbit_title_1: "Every device,",
       orbit_title_2: "effortlessly connected.",
       orbit_subtitle:
-        "Pair once, then browse permitted folders whenever both computers are on the same network—no repeated approval popups.",
+        "Pair once, then browse permitted folders whenever both computers are on the same network, with no repeated approval popups.",
       o1_title: "Automatic discovery",
       o1_desc: "Nearby Ulak PCs appear on the radar automatically over mDNS.",
       o2_title: "Encrypted by default",
@@ -109,7 +109,7 @@
         "For those curious about how it works beneath the UI: Ulak separates an authoritative Rust core from its Tauri v2 Windows shell and React 19 interface.",
       t1_title: "Bounded 64 KiB streaming & locked handles",
       t1_desc:
-        "Files stream straight from Windows handles (denying concurrent writes/deletion) using fixed <code>64 KiB</code> buffers—never buffered into RAM or passed through WebView JSON.",
+        "Files stream straight from Windows handles (denying concurrent writes/deletion) using fixed <code>64 KiB</code> buffers, never buffered into RAM or passed through WebView JSON.",
       t2_title: "Ed25519 identity & commit-before-reveal pairing",
       t2_desc:
         "Device IDs are <code>BLAKE3</code> hashes of persistent Ed25519 keys. Nearby 6-digit pairing binds descriptors and 256-bit nonces via signed commitments before reveal over pinned local CA TLS (<code>rustls</code> + <code>rcgen</code>).",
@@ -143,7 +143,7 @@
       dl_title_1: "Ready to share files",
       dl_title_2: "the direct way?",
       dl_subtitle:
-        "Download the portable Windows desktop app and run it right away—no installer, no background cloud service, no sign-up.",
+        "Download the portable Windows desktop app and run it right away, with no installer, no background cloud service, no sign-up.",
       dl_exe: "Download ulak-desktop.exe",
       dl_zip: "Portable .zip (Desktop + CLI)",
       dl_all: "GitHub Releases",
@@ -162,15 +162,15 @@
       footer_arch: "Architecture",
       footer_license: "MIT License",
       zoom_devices:
-        "Devices overview — paired PCs, nearby radar, quick shares, and live transfer bar",
+        "Devices overview: paired PCs, nearby radar, quick shares, and live transfer bar",
       zoom_guest_browser:
-        "Offline browser guest view — browse folders and download files from any device",
+        "Offline browser guest view: browse folders and download files from any device",
       zoom_remote:
-        "Remote browser — multi-select files, download folders, or drag into Windows Explorer",
+        "Remote browser: multi-select files, download folders, or drag into Windows Explorer",
       zoom_shares:
-        "My shares & details — inspect source paths, audiences, and guest invitations",
+        "My shares & details: inspect source paths, audiences, and guest invitations",
       zoom_radar:
-        "Nearby radar — mDNS discovery finds local Ulak computers automatically",
+        "Nearby radar: mDNS discovery finds local Ulak computers automatically",
       orbit_radar_head: "Nearby Radar",
       chip_browse: "Browse",
       chip_pair: "Pair",
@@ -182,13 +182,13 @@
       radar_detail_archive: "Paired · Offline · Last seen 3 hours ago",
     },
     tr: {
-      page_title: "Ulak — Windows İçin Doğrudan Yerel Ağ Dosya Paylaşımı",
+      page_title: "Ulak - Windows İçin Doğrudan Yerel Ağ Dosya Paylaşımı",
       nav_tour: "Nasıl Çalışır",
       nav_features: "Özellikler",
       nav_devices: "Cihazlar",
       nav_tech: "Teknik Detaylar",
       nav_download: "İndir",
-      hero_pill: "v0.1.0-alpha · Windows 10/11 · İnternetsiz Yerel Ağ",
+      hero_pill: "v0.1.0-alpha · Windows",
       hero_title_1: "Dosyalarını Doğrudan Paylaş,",
       hero_title_2: "Bulut Olmadan.",
       hero_lead:
@@ -338,15 +338,15 @@
       footer_arch: "Mimari",
       footer_license: "MIT Lisansı",
       zoom_devices:
-        "Cihazlar görünümü — eşleşen bilgisayarlar, yakın radar, hızlı paylaşımlar ve aktarım çubuğu",
+        "Cihazlar görünümü: eşleşen bilgisayarlar, yakın radar, hızlı paylaşımlar ve aktarım çubuğu",
       zoom_guest_browser:
-        "Çevrimdışı tarayıcı misafir arayüzü — uygulama kurmadan klasör gez ve indir",
+        "Çevrimdışı tarayıcı misafir arayüzü: uygulama kurmadan klasör gez ve indir",
       zoom_remote:
-        "Uzak dosya tarayıcısı — çoklu seçim, klasör indirme veya Explorer’a sürükleme",
+        "Uzak dosya tarayıcısı: çoklu seçim, klasör indirme veya Explorer’a sürükleme",
       zoom_shares:
-        "Paylaşımlarım ve detaylar — kaynak yolları, erişim izinleri ve misafir davetleri",
+        "Paylaşımlarım ve detaylar: kaynak yolları, erişim izinleri ve misafir davetleri",
       zoom_radar:
-        "Yakın radar — mDNS keşfi yerel ağdaki Ulak bilgisayarlarını otomatik bulur",
+        "Yakın radar: mDNS keşfi yerel ağdaki Ulak bilgisayarlarını otomatik bulur",
       orbit_radar_head: "Yakın Radar",
       chip_browse: "Göz at",
       chip_pair: "Eşleştir",
@@ -399,7 +399,7 @@
       title_en: "Share to any phone or tablet via QR",
       title_tr: "QR kod ile herhangi bir telefona gönder",
       desc_en:
-        "Create a one-time QR code for any share. Guests scan it and download directly from their phone browser—no app installation needed.",
+        "Create a one-time QR code for any share. Guests scan it and download directly from their phone browser, with no app installation needed.",
       desc_tr:
         "İstediğin paylaşım için tek seferlik QR kod üret. Misafirler telefon kamerasıyla okutup uygulama kurmadan tarayıcıdan indirsin.",
       pills_en: ["5-min one-time invite", "Zero external requests"],
@@ -528,7 +528,7 @@
       }
       if (zoomBtn) {
         zoomBtn.setAttribute("data-zoom-src", step.img);
-        zoomBtn.setAttribute("data-zoom-caption", `${title} — ${desc}`);
+        zoomBtn.setAttribute("data-zoom-caption", `${title}: ${desc}`);
       }
       if (titleEl) titleEl.textContent = title;
       if (descEl) descEl.textContent = desc;
@@ -636,6 +636,11 @@
 
       const labelEl = document.getElementById("release-tag-label");
       if (labelEl) labelEl.textContent = `${tag} · Windows x64`;
+      COPY.en.hero_pill = `${tag} · Windows`;
+      COPY.tr.hero_pill = `${tag} · Windows`;
+      document.querySelectorAll('[data-i18n="hero_pill"]').forEach((el) => {
+        el.textContent = `${tag} · Windows`;
+      });
 
       if (exeAsset?.browser_download_url) {
         document.querySelectorAll("[data-release-exe]").forEach((a) => {
