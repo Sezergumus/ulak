@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, net::IpAddr, time::Duration};
 
 const LIFETIME: u64 = 120;
+const CLOCK_SKEW: u64 = 60;
 const CAPACITY: usize = 16;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -157,6 +158,17 @@ fn reply_message(session: &Session, reply: &Reply) -> Result<Vec<u8>> {
         &reply.challenge,
     ))?)
 }
+fn validate_offer(offer: &Offer, current_time: u64) -> Result<()> {
+    uuid::Uuid::parse_str(&offer.id)?;
+    ensure!(
+        offer.expires_at > current_time
+            && offer.expires_at <= current_time + LIFETIME + CLOCK_SKEW
+            && offer.commitment.len() == 64,
+        "Invalid pairing offer"
+    );
+    Ok(())
+}
+
 fn validate_secret(value: &str) -> Result<()> {
     ensure!(
         identity::decode(value)?.len() == 32,
@@ -231,7 +243,7 @@ impl Core {
             "Invalid pairing commitment"
         );
         ensure!(
-            start.timestamp.abs_diff(now()) <= 60,
+            start.timestamp.abs_diff(now()) <= CLOCK_SKEW,
             "Pairing request expired"
         );
         identity::verify(
@@ -432,13 +444,7 @@ pub async fn start(core: &Core, endpoint: &str, expected_id: &str) -> Result<Vie
     };
     request.signature = identity::sign(&core.read(), &start_message(&request)?)?;
     let offer: Offer = post(&client, "/v1/pairing/start", &request).await?;
-    uuid::Uuid::parse_str(&offer.id)?;
-    ensure!(
-        offer.expires_at > now()
-            && offer.expires_at <= now() + LIFETIME
-            && offer.commitment.len() == 64,
-        "Invalid pairing offer"
-    );
+    validate_offer(&offer, now())?;
     identity::verify(
         &client.remote.identity,
         &transcript(&request, &offer)?,
@@ -682,5 +688,34 @@ mod tests {
                 .is_err()
         );
         assert!(host.read().peers.is_empty());
+    }
+    #[test]
+    fn offer_validation_tolerates_responder_clock_skew() {
+        let now_sec = 1_700_000_000;
+        let base_offer = Offer {
+            id: uuid::Uuid::new_v4().to_string(),
+            commitment: "0".repeat(64),
+            expires_at: now_sec + LIFETIME,
+            signature: String::new(),
+        };
+        assert!(validate_offer(&base_offer, now_sec).is_ok());
+
+        let ahead_offer = Offer {
+            expires_at: now_sec + LIFETIME + CLOCK_SKEW,
+            ..base_offer.clone()
+        };
+        assert!(validate_offer(&ahead_offer, now_sec).is_ok());
+
+        let too_far_ahead = Offer {
+            expires_at: now_sec + LIFETIME + CLOCK_SKEW + 1,
+            ..base_offer.clone()
+        };
+        assert!(validate_offer(&too_far_ahead, now_sec).is_err());
+
+        let expired_offer = Offer {
+            expires_at: now_sec,
+            ..base_offer
+        };
+        assert!(validate_offer(&expired_offer, now_sec).is_err());
     }
 }
