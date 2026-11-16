@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows x64
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install frontend dependencies and build
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+      - name: Run Rust workspace tests
+        run: cargo test --workspace
+
+      - name: Build release binaries
+        run: cargo build --release -p ulak-desktop -p ulak-cli
+
+      - name: Package release assets
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          New-Item -ItemType Directory -Force release-assets | Out-Null
+          Copy-Item target/release/ulak-desktop.exe release-assets/ulak-desktop.exe
+          Copy-Item target/release/ulak.exe release-assets/ulak.exe
+          Compress-Archive -Path release-assets/ulak-desktop.exe, release-assets/ulak.exe -DestinationPath "release-assets/ulak-$tag-windows-x64.zip"
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $prerelease = if ($tag -match "-") { "--prerelease" } else { "" }
+          $notes = @(
+            'Experimental Windows x64 portable pre-release.',
+            '',
+            '### Included files',
+            '- `ulak-desktop.exe` - standalone desktop app (no installer required; embeds the UI)',
+            "- \`ulak.exe\` (inside \`ulak-$tag-windows-x64.zip\`) - local CLI tool",
+            '',
+            '### Notes',
+            '- Unsigned executable: Windows SmartScreen may show a warning on first launch (*More info -> Run anyway*).',
+            '- Physical second-PC, mobile browser, Explorer drag-out, and 50 GB acceptance checks remain ongoing.'
+          ) -join "`n"
+          if ($prerelease) {
+            gh release create $tag release-assets/ulak-desktop.exe "release-assets/ulak-$tag-windows-x64.zip" --title "Ulak $tag" --notes $notes --prerelease
+          } else {
+            gh release create $tag release-assets/ulak-desktop.exe "release-assets/ulak-$tag-windows-x64.zip" --title "Ulak $tag" --notes $notes
+          }
