@@ -75,7 +75,7 @@ fn share(api: &Api, id: &str, who: &Principal, address: IpAddr) -> ApiResult<Sha
         .map_err(|_| ApiError(StatusCode::NOT_FOUND))
 }
 
-const FAVICON_SVG: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5.5" fill="#191A1D"/><path d="M6.5 5.2v8.4c0 3.2 2.2 5.2 5.5 5.2s5.5-2 5.5-5.2V5.2h-3.1v8.2c0 1.6-.9 2.6-2.4 2.6s-2.4-1-2.4-2.6V5.2Z" fill="#EFBD77"/></svg>"##;
+const FAVICON_SVG: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5.5" fill="#15181B"/><path d="M6.5 5.2v8.4c0 3.2 2.2 5.2 5.5 5.2s5.5-2 5.5-5.2V5.2h-3.1v8.2c0 1.6-.9 2.6-2.4 2.6s-2.4-1-2.4-2.6V5.2Z" fill="#5FD0B3"/></svg>"##;
 
 pub fn router(core: Core, lan: LanPolicy) -> Router {
     Router::new()
