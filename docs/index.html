@@ -37,11 +37,22 @@
       content="https://sezergumus.github.io/ulak/images/og-banner.png"
     />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      document.documentElement.classList.add("js");
+    </script>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <div class="grain-layer" aria-hidden="true"></div>
+
     <header class="topbar" id="topbar">
-      <div class="container topbar-inner">
+      <div class="topbar-shell">
         <a class="brand" href="#top" aria-label="Ulak home">
           <img
             class="brand-mark"
@@ -54,10 +65,18 @@
         </a>
 
         <nav class="nav-links" aria-label="Main navigation">
-          <a href="#tour" data-i18n="nav_tour">How it works</a>
-          <a href="#features" data-i18n="nav_features">Features</a>
-          <a href="#devices" data-i18n="nav_devices">Devices</a>
-          <a href="#technical" data-i18n="nav_tech">Under the hood</a>
+          <a href="#tour" data-nav-link="tour" data-i18n="nav_tour"
+            >How it works</a
+          >
+          <a href="#features" data-nav-link="features" data-i18n="nav_features"
+            >Features</a
+          >
+          <a href="#devices" data-nav-link="devices" data-i18n="nav_devices"
+            >Devices</a
+          >
+          <a href="#technical" data-nav-link="technical" data-i18n="nav_tech"
+            >Under the hood</a
+          >
         </nav>
 
         <div class="topbar-actions">
@@ -98,37 +117,87 @@
 
     <main id="top">
       <!-- Hero -->
-      <section class="hero">
-        <div class="container">
+      <section class="hero" id="hero">
+        <div class="hero-backdrop" aria-hidden="true">
+          <div class="hero-aurora"></div>
+          <div class="hero-grid-plane"></div>
+          <div class="hero-arcs">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+
+        <div class="container hero-container">
           <div class="hero-copy">
-            <div class="hero-eyebrow">
-              <span class="btn-dot" aria-hidden="true"></span>
+            <a
+              class="hero-eyebrow hero-enter"
+              style="--stagger: 0"
+              href="https://github.com/Sezergumus/ulak/releases"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span class="signal-dot" aria-hidden="true"></span>
               <span data-i18n="hero_pill">v0.1.0-alpha · Windows</span>
-            </div>
-            <h1 class="display-heading">
-              <span data-i18n="hero_title_1">Share Files Directly</span>
-              <span class="editorial-em" data-i18n="hero_title_2"
+              <span class="eyebrow-sep" aria-hidden="true"></span>
+              <span class="eyebrow-note" data-i18n="hero_pill_sub"
+                >Open source</span
+              >
+              <svg
+                class="eyebrow-arrow"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="7" y1="17" x2="17" y2="7" />
+                <polyline points="7 7 17 7 17 17" />
+              </svg>
+            </a>
+
+            <h1
+              class="display-heading hero-title hero-enter"
+              style="--stagger: 1"
+            >
+              <span class="hero-title-main" data-i18n="hero_title_1"
+                >Share Files Directly</span
+              >
+              <span
+                class="editorial-em hero-title-accent"
+                data-i18n="hero_title_2"
                 >Without The Cloud</span
               >
             </h1>
-            <p class="hero-lead" data-i18n="hero_lead">
+
+            <p
+              class="hero-lead hero-enter"
+              style="--stagger: 2"
+              data-i18n="hero_lead"
+            >
               Send files and folders straight from your PC to nearby computers
               or phones on the same Wi-Fi. Nothing gets uploaded to the
               internet, and nothing gets copied twice.
             </p>
-            <div class="hero-actions">
+
+            <div class="hero-actions hero-enter" style="--stagger: 3">
               <a
-                class="btn btn-lg btn-primary"
+                class="btn btn-lg btn-primary btn-hero-primary"
                 href="https://github.com/Sezergumus/ulak/releases/download/v0.1.0-alpha/ulak-desktop.exe"
                 data-release-exe
               >
                 <svg
+                  class="btn-icon-dl"
                   width="16"
                   height="16"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  stroke-width="2"
+                  stroke-width="2.1"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   aria-hidden="true"
@@ -147,56 +216,246 @@
                 See how it works
               </a>
             </div>
-            <p class="hero-meta" data-i18n="hero_meta">
-              Portable single .exe · No installer or account needed · MIT open
-              source
-            </p>
+
+            <div class="hero-trust-strip hero-enter" style="--stagger: 4">
+              <span class="trust-item">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="4" width="18" height="14" rx="2" />
+                  <line x1="8" y1="21" x2="16" y2="21" />
+                  <line x1="12" y1="18" x2="12" y2="21" />
+                </svg>
+                <span data-i18n="hero_trust_1">Portable single .exe</span>
+              </span>
+              <span class="trust-dot" aria-hidden="true"></span>
+              <span class="trust-item">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+                <span data-i18n="hero_trust_2">Local TLS + BLAKE3</span>
+              </span>
+              <span class="trust-dot" aria-hidden="true"></span>
+              <span class="trust-item">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+                <span data-i18n="hero_trust_3">Zero cloud or staging</span>
+              </span>
+              <span class="trust-dot" aria-hidden="true"></span>
+              <span class="trust-item">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="16 18 22 12 16 6" />
+                  <polyline points="8 6 2 12 8 18" />
+                </svg>
+                <span data-i18n="hero_trust_4">MIT open source</span>
+              </span>
+            </div>
           </div>
 
-          <div class="hero-visual">
-            <div class="hero-halo" aria-hidden="true"></div>
-            <button
-              type="button"
-              class="hero-window zoomable"
-              data-zoom-src="./images/devices-overview.png"
-              data-zoom-caption-key="zoom_devices"
-              aria-label="Inspect Ulak desktop overview screenshot"
-            >
-              <img
-                src="./images/devices-overview.png"
-                alt="Ulak desktop window showing paired devices, nearby discovery, local shares, and active transfer bar"
-                width="1280"
-                height="820"
-              />
-            </button>
+          <!-- Interactive Studio Product Stage -->
+          <div class="hero-stage-wrap hero-enter" style="--stagger: 5">
+            <div class="hero-stage-glow" aria-hidden="true"></div>
+            <div class="hero-stage-horizon" aria-hidden="true"></div>
 
-            <div class="hero-float hero-float-left" aria-hidden="true">
-              <div class="float-label">
-                <span data-i18n="float_pair_label">Match on both screens</span>
-                <strong data-i18n="float_pair_badge">Verified</strong>
+            <div class="hero-device-frame spotlight-card" id="hero-stage">
+              <div class="hero-frame-rim" aria-hidden="true"></div>
+
+              <div class="hero-chrome">
+                <div class="hero-chrome-left">
+                  <span class="chrome-status-pill">
+                    <span class="signal-dot" aria-hidden="true"></span>
+                    <span>LAN · TLS 1.3</span>
+                  </span>
+                  <span class="chrome-path" id="hero-scene-meta"
+                    >Workstation-01 · :7443</span
+                  >
+                </div>
+
+                <div
+                  class="hero-scene-tabs"
+                  role="tablist"
+                  aria-label="Hero product views"
+                >
+                  <button
+                    type="button"
+                    class="hero-scene-tab"
+                    role="tab"
+                    aria-selected="true"
+                    data-hero-scene="overview"
+                    data-i18n="hero_view_overview"
+                  >
+                    Devices
+                  </button>
+                  <button
+                    type="button"
+                    class="hero-scene-tab"
+                    role="tab"
+                    aria-selected="false"
+                    data-hero-scene="radar"
+                    data-i18n="hero_view_radar"
+                  >
+                    Nearby Radar
+                  </button>
+                  <button
+                    type="button"
+                    class="hero-scene-tab"
+                    role="tab"
+                    aria-selected="false"
+                    data-hero-scene="pair"
+                    data-i18n="hero_view_pair"
+                  >
+                    6-Digit Pair
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  class="chrome-expand-btn zoomable"
+                  id="hero-zoom-trigger"
+                  data-zoom-src="./images/devices-overview.png"
+                  data-zoom-caption-key="zoom_devices"
+                  aria-label="Inspect screenshot full size"
+                >
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <polyline points="15 3 21 3 21 9" />
+                    <polyline points="9 21 3 21 3 15" />
+                    <line x1="21" y1="3" x2="14" y2="10" />
+                    <line x1="3" y1="21" x2="10" y2="14" />
+                  </svg>
+                  <span data-i18n="hero_inspect">Inspect</span>
+                </button>
               </div>
-              <div class="float-code">457 924</div>
-              <div class="float-sub" data-i18n="float_pair_sub">
-                No IP addresses to type
-              </div>
+
+              <button
+                type="button"
+                class="hero-screen zoomable"
+                id="hero-screen-btn"
+                data-zoom-src="./images/devices-overview.png"
+                data-zoom-caption-key="zoom_devices"
+                aria-label="Inspect Ulak desktop overview screenshot"
+              >
+                <img
+                  id="hero-screen-img"
+                  src="./images/devices-overview.png"
+                  alt="Ulak desktop window showing paired devices, nearby discovery, local shares, and active transfer bar"
+                  width="1280"
+                  height="820"
+                />
+                <span class="zoom-pill">
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    <line x1="11" y1="8" x2="11" y2="14" />
+                    <line x1="8" y1="11" x2="14" y2="11" />
+                  </svg>
+                  <span data-i18n="zoom_label">Click to inspect</span>
+                </span>
+              </button>
             </div>
 
-            <div class="hero-float hero-float-right" aria-hidden="true">
-              <div class="float-label">
-                <span>Raw-Camera-Reel.mov</span>
-                <strong>109.5 MB/s</strong>
+            <!-- Companion Telemetry Dock (floating on wide screens, cleanly docked on mobile) -->
+            <div class="hero-telemetry-dock" aria-hidden="true">
+              <div class="telemetry-card telemetry-card-left">
+                <div class="telemetry-top">
+                  <span class="telemetry-tag" data-i18n="float_pair_label"
+                    >Match on both screens</span
+                  >
+                  <span
+                    class="telemetry-badge is-mint"
+                    data-i18n="float_pair_badge"
+                    >Verified</span
+                  >
+                </div>
+                <div class="telemetry-code">791 696</div>
+                <div class="signal-bridge">
+                  <span class="bridge-node">Workstation-01</span>
+                  <span class="bridge-track">
+                    <span class="bridge-pulse"></span>
+                  </span>
+                  <span class="bridge-node">ThinkPad-X1</span>
+                </div>
               </div>
-              <div class="float-title" data-i18n="float_dl_title">
-                Direct local stream
+
+              <div class="telemetry-card telemetry-card-right">
+                <div class="telemetry-top">
+                  <span class="telemetry-file">Raw-Camera-Reel.mov</span>
+                  <span class="telemetry-speed">109.5 MB/s</span>
+                </div>
+                <div class="telemetry-sub-row">
+                  <span data-i18n="float_dl_title">Direct local stream</span>
+                  <span class="telemetry-mono">64 KiB · BLAKE3</span>
+                </div>
+                <div class="telemetry-progress">
+                  <span class="telemetry-progress-fill"></span>
+                </div>
               </div>
-              <div class="float-bar"><span></span></div>
             </div>
           </div>
         </div>
       </section>
 
       <!-- 4-column plain facts -->
-      <section class="facts-section">
+      <section class="facts-section" data-reveal>
         <div class="container">
           <div class="facts-header">
             <h2 class="display-heading">
@@ -208,33 +467,37 @@
           </div>
 
           <div class="facts-grid">
-            <div class="fact-item">
+            <div class="fact-item" style="--item-i: 0">
+              <span class="fact-index">01</span>
+              <strong class="fact-value">0</strong>
               <span class="fact-caption" data-i18n="fact_1_label"
                 >Cloud uploads, limits, or user accounts required</span
               >
-              <strong class="fact-value">0</strong>
             </div>
-            <div class="fact-item">
+            <div class="fact-item" style="--item-i: 1">
+              <span class="fact-index">02</span>
+              <strong class="fact-value" data-i18n="fact_2_val">6-Digit</strong>
               <span class="fact-caption" data-i18n="fact_2_label"
                 >Compare one short number to pair nearby Windows PCs</span
               >
-              <strong class="fact-value" data-i18n="fact_2_val">6-Digit</strong>
             </div>
-            <div class="fact-item">
-              <span class="fact-caption" data-i18n="fact_3_label"
-                >Scan to open shared folders in any phone browser</span
-              >
+            <div class="fact-item" style="--item-i: 2">
+              <span class="fact-index">03</span>
               <strong class="fact-value" data-i18n="fact_3_val"
                 >1-Tap QR</strong
               >
+              <span class="fact-caption" data-i18n="fact_3_label"
+                >Scan to open shared folders in any phone browser</span
+              >
             </div>
-            <div class="fact-item">
+            <div class="fact-item" style="--item-i: 3">
+              <span class="fact-index">04</span>
+              <strong class="fact-value" data-i18n="fact_4_val"
+                >In-Place</strong
+              >
               <span class="fact-caption" data-i18n="fact_4_label"
                 >Files stay in their original folder without duplicate
                 copies</span
-              >
-              <strong class="fact-value" data-i18n="fact_4_val"
-                >In-Place</strong
               >
             </div>
           </div>
@@ -242,9 +505,10 @@
       </section>
 
       <!-- Wide visual tour -->
-      <section class="section" id="tour">
+      <section class="section" id="tour" data-reveal>
         <div class="container">
           <div class="section-centered">
+            <span class="section-kicker" data-i18n="tour_kicker">Workflow</span>
             <h2 class="display-heading">
               <span data-i18n="tour_title_1">Simple enough for everyone,</span>
               <span class="editorial-em" data-i18n="tour_title_2"
@@ -257,16 +521,26 @@
             </p>
           </div>
 
-          <div class="tour-tabs" role="tablist" aria-label="Product tour steps">
+          <div
+            class="tour-tabs"
+            id="tour-tabs"
+            role="tablist"
+            aria-label="Product tour steps"
+          >
+            <span
+              class="tour-tabs-indicator"
+              id="tour-tabs-indicator"
+              aria-hidden="true"
+            ></span>
             <button
               type="button"
               class="tour-tab"
               role="tab"
               aria-selected="true"
               data-tour="pair"
-              data-i18n="tab_pair"
             >
-              1. Pair PCs
+              <span class="tab-num">01</span>
+              <span data-i18n="tab_pair">Pair PCs</span>
             </button>
             <button
               type="button"
@@ -274,9 +548,9 @@
               role="tab"
               aria-selected="false"
               data-tour="audience"
-              data-i18n="tab_audience"
             >
-              2. Pick audience
+              <span class="tab-num">02</span>
+              <span data-i18n="tab_audience">Pick audience</span>
             </button>
             <button
               type="button"
@@ -284,9 +558,9 @@
               role="tab"
               aria-selected="false"
               data-tour="guest"
-              data-i18n="tab_guest"
             >
-              3. Phone QR guest
+              <span class="tab-num">03</span>
+              <span data-i18n="tab_guest">Phone QR guest</span>
             </button>
             <button
               type="button"
@@ -294,9 +568,9 @@
               role="tab"
               aria-selected="false"
               data-tour="transfers"
-              data-i18n="tab_transfers"
             >
-              4. Track &amp; resume
+              <span class="tab-num">04</span>
+              <span data-i18n="tab_transfers">Track &amp; resume</span>
             </button>
             <button
               type="button"
@@ -304,13 +578,13 @@
               role="tab"
               aria-selected="false"
               data-tour="keyboard"
-              data-i18n="tab_keyboard"
             >
-              5. Quick search
+              <span class="tab-num">05</span>
+              <span data-i18n="tab_keyboard">Quick search</span>
             </button>
           </div>
 
-          <div class="showcase-frame" id="tour-frame">
+          <div class="showcase-frame spotlight-card" id="tour-frame">
             <button
               type="button"
               class="showcase-image-wrap zoomable"
@@ -366,9 +640,12 @@
       </section>
 
       <!-- Everyday bento grid -->
-      <section class="section" id="features">
+      <section class="section" id="features" data-reveal>
         <div class="container">
           <div class="section-centered">
+            <span class="section-kicker" data-i18n="bento_kicker"
+              >Capabilities</span
+            >
             <h2 class="display-heading">
               <span data-i18n="bento_title_1"
                 >Everything stays on your network,</span
@@ -378,15 +655,18 @@
               >
             </h2>
             <p data-i18n="bento_subtitle">
-              Designed so non-technical users can share a 20 GB video or a quick
-              PDF without touching settings they don't understand.
+              Designed so anyone can share a 20 GB video or a quick PDF without
+              touching settings they don't need.
             </p>
           </div>
 
           <div class="bento-grid">
             <!-- Row 1: 2 wide cards -->
-            <article class="bento-card bento-span-3">
-              <div>
+            <article class="bento-card spotlight-card bento-span-3">
+              <div class="bento-copy">
+                <span class="bento-badge" data-i18n="b1_kicker"
+                  >Explicit access</span
+                >
                 <h3 data-i18n="b1_title">You choose who sees every folder</h3>
                 <p data-i18n="b1_desc">
                   Keep a share private to a one-time link, pick specific paired
@@ -394,26 +674,64 @@
                   to everyone on your local Wi-Fi.
                 </p>
               </div>
-              <div class="bento-widget" aria-hidden="true">
-                <div class="audience-row">
-                  <span data-i18n="aud_1">Invitation only</span>
-                  <span data-i18n="aud_1_tag">Private link</span>
-                </div>
-                <div class="audience-row active">
-                  <span data-i18n="aud_2">Choose devices</span>
+              <div
+                class="bento-widget audience-widget"
+                role="radiogroup"
+                aria-label="Share audience preview"
+              >
+                <button
+                  type="button"
+                  class="audience-row"
+                  role="radio"
+                  aria-checked="false"
+                  data-audience-opt="invite"
+                >
+                  <span class="audience-left">
+                    <span class="audience-radio" aria-hidden="true"></span>
+                    <span data-i18n="aud_1">Invitation only</span>
+                  </span>
+                  <span class="audience-tag" data-i18n="aud_1_tag"
+                    >Private link</span
+                  >
+                </button>
+                <button
+                  type="button"
+                  class="audience-row is-active"
+                  role="radio"
+                  aria-checked="true"
+                  data-audience-opt="devices"
+                >
+                  <span class="audience-left">
+                    <span class="audience-radio" aria-hidden="true"></span>
+                    <span data-i18n="aud_2">Choose devices</span>
+                  </span>
                   <span class="audience-tag" data-i18n="aud_2_tag"
                     >Studio-PC, Archive-Node</span
                   >
-                </div>
-                <div class="audience-row">
-                  <span data-i18n="aud_3">Everyone on the local network</span>
-                  <span data-i18n="aud_3_tag">Read-only Wi-Fi</span>
-                </div>
+                </button>
+                <button
+                  type="button"
+                  class="audience-row"
+                  role="radio"
+                  aria-checked="false"
+                  data-audience-opt="lan"
+                >
+                  <span class="audience-left">
+                    <span class="audience-radio" aria-hidden="true"></span>
+                    <span data-i18n="aud_3">Everyone on the local network</span>
+                  </span>
+                  <span class="audience-tag" data-i18n="aud_3_tag"
+                    >Read-only Wi-Fi</span
+                  >
+                </button>
               </div>
             </article>
 
-            <article class="bento-card bento-span-3">
-              <div>
+            <article class="bento-card spotlight-card bento-span-3">
+              <div class="bento-copy">
+                <span class="bento-badge" data-i18n="b2_kicker"
+                  >Browser guests</span
+                >
                 <h3 data-i18n="b2_title">Send to any phone without an app</h3>
                 <p data-i18n="b2_desc">
                   Need to grab files on an iPhone, Android, or guest laptop?
@@ -434,12 +752,18 @@
                   width="960"
                   height="600"
                 />
+                <span class="zoom-pill">
+                  <span data-i18n="zoom_label">Click to inspect</span>
+                </span>
               </button>
             </article>
 
             <!-- Row 2: 3 cards -->
-            <article class="bento-card bento-span-2">
-              <div>
+            <article class="bento-card spotlight-card bento-span-2">
+              <div class="bento-copy">
+                <span class="bento-badge" data-i18n="b3_kicker"
+                  >Zero staging</span
+                >
                 <h3 data-i18n="b3_title">No duplicate copies</h3>
                 <p data-i18n="b3_desc">
                   Sharing a huge folder doesn't copy it into an app vault or
@@ -447,10 +771,21 @@
                   live.
                 </p>
               </div>
-              <div class="bento-widget">
+              <div class="bento-widget source-widget" aria-hidden="true">
                 <div class="float-label">
-                  <span>D:\Projects\Design-Assets</span>
+                  <span class="mono-path">D:\Projects\Design-Assets</span>
                   <strong data-i18n="b3_badge">In-place</strong>
+                </div>
+                <div class="source-pipe">
+                  <span class="pipe-node" data-i18n="b3_pipe_disk">Disk</span>
+                  <span class="pipe-line">
+                    <span class="pipe-packet"></span>
+                  </span>
+                  <span class="pipe-node is-accent">64 KiB</span>
+                  <span class="pipe-line">
+                    <span class="pipe-packet is-delayed"></span>
+                  </span>
+                  <span class="pipe-node" data-i18n="b3_pipe_peer">Peer</span>
                 </div>
                 <div class="float-sub" data-i18n="b3_sub">
                   0 bytes duplicated on sender disk
@@ -458,8 +793,11 @@
               </div>
             </article>
 
-            <article class="bento-card bento-span-2">
-              <div>
+            <article class="bento-card spotlight-card bento-span-2">
+              <div class="bento-copy">
+                <span class="bento-badge" data-i18n="b4_kicker"
+                  >Windows Explorer</span
+                >
                 <h3 data-i18n="b4_title">Drag from and to Explorer</h3>
                 <p data-i18n="b4_desc">
                   Drop local folders into Ulak to share them immediately, or
@@ -480,30 +818,53 @@
                   width="960"
                   height="600"
                 />
+                <span class="zoom-pill">
+                  <span data-i18n="zoom_label">Click to inspect</span>
+                </span>
               </button>
             </article>
 
-            <article class="bento-card bento-span-2">
-              <div>
+            <article class="bento-card spotlight-card bento-span-2">
+              <div class="bento-copy">
+                <span class="bento-badge" data-i18n="b5_kicker"
+                  >Checkpointed</span
+                >
                 <h3 data-i18n="b5_title">Safe pause &amp; resume</h3>
                 <p data-i18n="b5_desc">
                   Wi-Fi dropped halfway through a 10 GB file? Ulak saves your
-                  progress and verifies every byte at the end so files never
+                  progress and checks every byte at the end so files never
                   arrive corrupted.
                 </p>
               </div>
-              <div class="bento-widget" aria-hidden="true">
+              <div class="bento-widget resume-widget" aria-hidden="true">
                 <div class="float-label">
-                  <span>Build-2026-11.zip</span>
+                  <span class="mono-path">Build-2026-11.zip</span>
                   <strong data-i18n="b5_badge">Verified</strong>
                 </div>
-                <div class="float-bar"><span style="width: 100%"></span></div>
+                <div class="chunk-strip">
+                  <span class="chunk is-done"></span>
+                  <span class="chunk is-done"></span>
+                  <span class="chunk is-done"></span>
+                  <span class="chunk is-done"></span>
+                  <span class="chunk is-done"></span>
+                  <span class="chunk is-done"></span>
+                  <span class="chunk is-done"></span>
+                  <span class="chunk is-done"></span>
+                </div>
+                <div class="float-sub">
+                  <span data-i18n="b5_sub"
+                    >BLAKE3 digest matched · .part finalized</span
+                  >
+                </div>
               </div>
             </article>
 
             <!-- Row 3: 2 balanced cards -->
-            <article class="bento-card bento-span-3">
-              <div>
+            <article class="bento-card spotlight-card bento-span-3">
+              <div class="bento-copy">
+                <span class="bento-badge" data-i18n="b6_kicker"
+                  >Keyboard-first</span
+                >
                 <h3 data-i18n="b6_title">Runs quietly in your system tray</h3>
                 <p data-i18n="b6_desc">
                   Close the window and Ulak keeps sharing in the background.
@@ -512,23 +873,28 @@
                 </p>
               </div>
               <div class="kbd-strip">
-                <span class="kbd-chip"
-                  ><kbd>Ctrl+Alt+U</kbd>
-                  <span data-i18n="kbd_summon">Summon Ulak</span></span
-                >
-                <span class="kbd-chip"
-                  ><kbd>Ctrl+K</kbd>
-                  <span data-i18n="kbd_cmd">Command menu</span></span
-                >
-                <span class="kbd-chip"
-                  ><kbd>Ctrl+F</kbd>
-                  <span data-i18n="kbd_filter">Filter list</span></span
-                >
+                <span class="kbd-chip">
+                  <span class="kbd-combo"
+                    ><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>U</kbd></span
+                  >
+                  <span data-i18n="kbd_summon">Summon Ulak</span>
+                </span>
+                <span class="kbd-chip">
+                  <span class="kbd-combo"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+                  <span data-i18n="kbd_cmd">Command menu</span>
+                </span>
+                <span class="kbd-chip">
+                  <span class="kbd-combo"><kbd>Ctrl</kbd><kbd>F</kbd></span>
+                  <span data-i18n="kbd_filter">Filter list</span>
+                </span>
               </div>
             </article>
 
-            <article class="bento-card bento-span-3">
-              <div>
+            <article class="bento-card spotlight-card bento-span-3">
+              <div class="bento-copy">
+                <span class="bento-badge" data-i18n="b7_kicker"
+                  >Persistent identity</span
+                >
                 <h3 data-i18n="b7_title">
                   Recognizes your PC even when IP changes
                 </h3>
@@ -551,6 +917,9 @@
                   width="960"
                   height="600"
                 />
+                <span class="zoom-pill">
+                  <span data-i18n="zoom_label">Click to inspect</span>
+                </span>
               </button>
             </article>
           </div>
@@ -558,9 +927,12 @@
       </section>
 
       <!-- Concentric Orbit Hub -->
-      <section class="orbit-section" id="devices">
+      <section class="orbit-section" id="devices" data-reveal>
         <div class="container">
           <div class="section-centered">
+            <span class="section-kicker" data-i18n="orbit_kicker"
+              >Local topology</span
+            >
             <h2 class="display-heading">
               <span data-i18n="orbit_title_1">Every device,</span>
               <span class="editorial-em" data-i18n="orbit_title_2"
@@ -653,23 +1025,66 @@
               </div>
             </div>
 
-            <div class="orbit-center" id="orbit-radar">
+            <div class="orbit-center spotlight-card" id="orbit-radar">
               <div class="live-radar-head">
                 <span class="live-radar-title">
-                  <span class="btn-dot" aria-hidden="true"></span>
+                  <span class="signal-dot" aria-hidden="true"></span>
                   <span data-i18n="orbit_radar_head">Nearby Radar</span>
                 </span>
                 <span class="live-radar-proto">_ulak._tcp.local.</span>
               </div>
 
-              <div class="live-radar-stage">
+              <div class="live-radar-stage" data-active-node="studio">
                 <div class="live-radar-field" aria-hidden="true">
+                  <span class="lr-axis lr-axis-h"></span>
+                  <span class="lr-axis lr-axis-v"></span>
                   <span class="lr-ring r1"></span>
                   <span class="lr-ring r2"></span>
                   <span class="lr-ring r3"></span>
                   <span class="lr-ring r4"></span>
+                  <span class="lr-pulse"></span>
                   <span class="lr-sweep"></span>
                 </div>
+
+                <svg
+                  class="radar-links-svg"
+                  viewBox="0 0 360 288"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  <line
+                    class="radar-link is-active"
+                    data-link-for="studio"
+                    x1="180"
+                    y1="144"
+                    x2="78"
+                    y2="46"
+                  />
+                  <line
+                    class="radar-link"
+                    data-link-for="thinkpad"
+                    x1="180"
+                    y1="144"
+                    x2="286"
+                    y2="76"
+                  />
+                  <line
+                    class="radar-link"
+                    data-link-for="phone"
+                    x1="180"
+                    y1="144"
+                    x2="86"
+                    y2="226"
+                  />
+                  <line
+                    class="radar-link"
+                    data-link-for="archive"
+                    x1="180"
+                    y1="144"
+                    x2="280"
+                    y2="248"
+                  />
+                </svg>
 
                 <div class="live-radar-core" aria-hidden="true">
                   <svg
@@ -820,7 +1235,7 @@
       </section>
 
       <!-- Concise Technical Deep-Dive Section -->
-      <section class="tech-section" id="technical">
+      <section class="tech-section" id="technical" data-reveal>
         <div class="container">
           <div class="tech-split">
             <div class="tech-left">
@@ -910,7 +1325,7 @@
               </div>
             </div>
 
-            <div class="tech-console">
+            <div class="tech-console spotlight-card">
               <div class="tech-console-top">
                 <div
                   class="tech-tabs"
@@ -971,15 +1386,17 @@
                     <div class="crate-row">
                       <code>ulak-cli</code>
                       <span data-i18n="c_cli"
-                        >Product `ulak` CLI talking to the live desktop without
-                        taking the state lock</span
+                        >Product <code>ulak</code> CLI talking to the live
+                        desktop without taking the state lock</span
                       >
                     </div>
                     <div class="crate-row">
                       <code>ulak-drag-probe</code>
                       <span data-i18n="c_drag"
-                        >Shared Windows OLE virtual-file COM stream
-                        (`IDataObject` / `IStream`)</span
+                        >Shared Windows OLE virtual-file COM stream (<code
+                          >IDataObject</code
+                        >
+                        / <code>IStream</code>)</span
                       >
                     </div>
                     <div class="crate-row">
@@ -1048,15 +1465,15 @@
                     <pre
                       id="cli-snippet"
                     ><code><span class="cli-comment"># Inspect running desktop snapshot over current-user named pipe</span>
-ulak status
+<span class="cli-cmd">ulak</span> status
 
 <span class="cli-comment"># Expose a file to the allowed local network, or folder to a paired PC</span>
-ulak share .\selected-file.txt --lan
-ulak share .\selected-folder --device PAIRED_DEVICE_ID
+<span class="cli-cmd">ulak</span> share <span class="cli-path">.\selected-file.txt</span> <span class="cli-flag">--lan</span>
+<span class="cli-cmd">ulak</span> share <span class="cli-path">.\selected-folder</span> <span class="cli-flag">--device</span> PAIRED_DEVICE_ID
 
 <span class="cli-comment"># Browse and download from a trusted connection descriptor</span>
-ulak list --remote .\trusted-connection.json
-ulak download --remote .\trusted-connection.json --share SHARE_ID --entry ENTRY_ID --destination .\downloads</code></pre>
+<span class="cli-cmd">ulak</span> list <span class="cli-flag">--remote</span> <span class="cli-path">.\trusted-connection.json</span>
+<span class="cli-cmd">ulak</span> download <span class="cli-flag">--remote</span> <span class="cli-path">.\trusted-connection.json</span> <span class="cli-flag">--share</span> SHARE_ID <span class="cli-flag">--entry</span> ENTRY_ID <span class="cli-flag">--destination</span> <span class="cli-path">.\downloads</span></code></pre>
                   </div>
                 </div>
               </div>
@@ -1066,86 +1483,90 @@ ulak download --remote .\trusted-connection.json --share SHARE_ID --entry ENTRY_
       </section>
 
       <!-- Final Release Download Section -->
-      <section class="download-section" id="download">
+      <section class="download-section" id="download" data-reveal>
         <div class="container">
-          <div class="download-banner">
-            <div class="hero-eyebrow">
-              <span class="btn-dot" aria-hidden="true"></span>
-              <span id="release-tag-label">v0.1.0-alpha · Windows x64</span>
-            </div>
-            <h2 class="display-heading">
-              <span data-i18n="dl_title_1">Ready to share files</span>
-              <span class="editorial-em" data-i18n="dl_title_2"
-                >the direct way?</span
-              >
-            </h2>
-            <p data-i18n="dl_subtitle">
-              Download the portable Windows desktop app and run it right away,
-              with no installer, no background cloud service, no sign-up.
-            </p>
-
-            <div class="download-ctas">
-              <a
-                class="btn btn-lg btn-primary"
-                href="https://github.com/Sezergumus/ulak/releases/download/v0.1.0-alpha/ulak-desktop.exe"
-                data-release-exe
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                <span data-i18n="dl_exe">Download ulak-desktop.exe</span>
-              </a>
-              <a
-                class="btn btn-lg btn-secondary"
-                href="https://github.com/Sezergumus/ulak/releases/download/v0.1.0-alpha/ulak-v0.1.0-alpha-windows-x64.zip"
-                data-release-zip
-              >
-                <span data-i18n="dl_zip">Portable .zip (Desktop + CLI)</span>
-              </a>
-              <a
-                class="btn btn-lg btn-glass"
-                href="https://github.com/Sezergumus/ulak/releases"
-                target="_blank"
-                rel="noreferrer"
-                data-i18n="dl_all"
-              >
-                GitHub Releases
-              </a>
-            </div>
-
-            <div class="release-notes-grid">
-              <div class="release-note">
-                <strong data-i18n="note_smartscreen_title"
-                  >First-launch SmartScreen note</strong
-                >
-                <span data-i18n="note_smartscreen_body">
-                  Because this pre-release binary is unsigned, Windows may show
-                  a SmartScreen prompt on first launch. Choose More info → Run
-                  anyway, or build directly from source on GitHub.
-                </span>
+          <div class="download-banner spotlight-card">
+            <div class="download-grid-bg" aria-hidden="true"></div>
+            <div class="download-inner">
+              <div class="hero-eyebrow download-eyebrow">
+                <span class="signal-dot" aria-hidden="true"></span>
+                <span id="release-tag-label">v0.1.0-alpha · Windows x64</span>
               </div>
-              <div class="release-note">
-                <strong data-i18n="note_scope_title"
-                  >Early alpha release scope</strong
+              <h2 class="display-heading">
+                <span data-i18n="dl_title_1">Ready to share files</span>
+                <span class="editorial-em" data-i18n="dl_title_2"
+                  >the direct way?</span
                 >
-                <span data-i18n="note_scope_body">
-                  Core Rust, WebView, and localhost workflows pass automated
-                  checks; real second-PC Wi-Fi, mobile Safari/Chrome certificate
-                  onboarding, interactive Explorer drag-out, and 50 GB stress
-                  validation are ongoing.
-                </span>
+              </h2>
+              <p data-i18n="dl_subtitle">
+                Download the portable Windows desktop app and run it right away,
+                with no installer, no background cloud service, no sign-up.
+              </p>
+
+              <div class="download-ctas">
+                <a
+                  class="btn btn-lg btn-primary btn-hero-primary"
+                  href="https://github.com/Sezergumus/ulak/releases/download/v0.1.0-alpha/ulak-desktop.exe"
+                  data-release-exe
+                >
+                  <svg
+                    class="btn-icon-dl"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.1"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  <span data-i18n="dl_exe">Download ulak-desktop.exe</span>
+                </a>
+                <a
+                  class="btn btn-lg btn-secondary"
+                  href="https://github.com/Sezergumus/ulak/releases/download/v0.1.0-alpha/ulak-v0.1.0-alpha-windows-x64.zip"
+                  data-release-zip
+                >
+                  <span data-i18n="dl_zip">Portable .zip (Desktop + CLI)</span>
+                </a>
+                <a
+                  class="btn btn-lg btn-glass"
+                  href="https://github.com/Sezergumus/ulak/releases"
+                  target="_blank"
+                  rel="noreferrer"
+                  data-i18n="dl_all"
+                >
+                  GitHub Releases
+                </a>
+              </div>
+
+              <div class="release-notes-grid">
+                <div class="release-note">
+                  <strong data-i18n="note_smartscreen_title"
+                    >First-launch SmartScreen note</strong
+                  >
+                  <span data-i18n="note_smartscreen_body">
+                    Because this pre-release binary is unsigned, Windows may
+                    show a SmartScreen prompt on first launch. Choose More info
+                    → Run anyway, or build directly from source on GitHub.
+                  </span>
+                </div>
+                <div class="release-note">
+                  <strong data-i18n="note_scope_title"
+                    >Early alpha release scope</strong
+                  >
+                  <span data-i18n="note_scope_body">
+                    Core Rust, WebView, and localhost workflows pass automated
+                    checks; real second-PC Wi-Fi, mobile Safari/Chrome
+                    certificate onboarding, interactive Explorer drag-out, and
+                    50 GB stress validation are ongoing.
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -1217,6 +1638,7 @@ ulak download --remote .\trusted-connection.json --share SHARE_ID --entry ENTRY_
                   href="https://github.com/Sezergumus/ulak"
                   target="_blank"
                   rel="noreferrer"
+                  data-i18n="footer_repo"
                   >GitHub Repository</a
                 >
               </li>
@@ -1243,7 +1665,9 @@ ulak download --remote .\trusted-connection.json --share SHARE_ID --entry ENTRY_
         </div>
       </div>
 
-      <div class="footer-wordmark" aria-hidden="true">ULAK</div>
+      <div class="footer-wordmark-wrap" aria-hidden="true">
+        <div class="footer-wordmark">ULAK</div>
+      </div>
     </footer>
 
     <!-- Screenshot zoom modal -->

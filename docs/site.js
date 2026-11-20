@@ -11,17 +11,23 @@
       nav_tech: "Under the hood",
       nav_download: "Download",
       hero_pill: "v0.1.0-alpha · Windows",
+      hero_pill_sub: "Open source",
       hero_title_1: "Share Files Directly",
       hero_title_2: "Without The Cloud",
       hero_lead:
         "Send files and folders straight from your PC to nearby computers or phones on the same Wi-Fi. Nothing gets uploaded to the internet, and nothing gets copied twice.",
       hero_cta_primary: "Download for Windows",
       hero_cta_secondary: "See how it works",
-      hero_meta:
-        "Portable single .exe · No installer or account needed · MIT open source",
+      hero_trust_1: "Portable single .exe",
+      hero_trust_2: "Local TLS + BLAKE3",
+      hero_trust_3: "Zero cloud or staging",
+      hero_trust_4: "MIT open source",
+      hero_view_overview: "Devices",
+      hero_view_radar: "Nearby Radar",
+      hero_view_pair: "6-Digit Pair",
+      hero_inspect: "Inspect",
       float_pair_label: "Match on both screens",
       float_pair_badge: "Verified",
-      float_pair_sub: "No IP addresses to type",
       float_dl_title: "Direct local stream",
       facts_title_1: "Built for everyday speed.",
       facts_title_2: "Zero setup headaches.",
@@ -33,20 +39,23 @@
       fact_4_label:
         "Files stay in their original folder without duplicate copies",
       fact_4_val: "In-Place",
+      tour_kicker: "Workflow",
       tour_title_1: "Simple enough for everyone,",
       tour_title_2: "ready in seconds.",
       tour_subtitle:
         "Pick a file or drop a folder, choose who can open it, and let them download directly over your local Wi-Fi or cable.",
-      tab_pair: "1. Pair PCs",
-      tab_audience: "2. Pick audience",
-      tab_guest: "3. Phone QR guest",
-      tab_transfers: "4. Track & resume",
-      tab_keyboard: "5. Quick search",
+      tab_pair: "Pair PCs",
+      tab_audience: "Pick audience",
+      tab_guest: "Phone QR guest",
+      tab_transfers: "Track & resume",
+      tab_keyboard: "Quick search",
       zoom_label: "Click to inspect",
+      bento_kicker: "Capabilities",
       bento_title_1: "Everything stays on your network,",
       bento_title_2: "under your control.",
       bento_subtitle:
         "Designed so anyone can share a 20 GB video or a quick PDF without touching settings they don't need.",
+      b1_kicker: "Explicit access",
       b1_title: "You choose who sees every folder",
       b1_desc:
         "Keep a share private to a one-time link, pick specific paired computers (even when they are offline right now), or open it to everyone on your local Wi-Fi.",
@@ -56,30 +65,40 @@
       aud_2_tag: "Studio-PC, Archive-Node",
       aud_3: "Everyone on the local network",
       aud_3_tag: "Read-only Wi-Fi",
+      b2_kicker: "Browser guests",
       b2_title: "Send to any phone without an app",
       b2_desc:
         "Need to grab files on an iPhone, Android, or guest laptop? Generate a one-time QR code. They browse your shared folder straight in their browser.",
+      b3_kicker: "Zero staging",
       b3_title: "No duplicate copies",
       b3_desc:
         "Sharing a huge folder doesn't copy it into an app vault or waste SSD space. Files stream directly from where they already live.",
       b3_badge: "In-place",
+      b3_pipe_disk: "Disk",
+      b3_pipe_peer: "Peer",
       b3_sub: "0 bytes duplicated on sender disk",
+      b4_kicker: "Windows Explorer",
       b4_title: "Drag from and to Explorer",
       b4_desc:
         "Drop local folders into Ulak to share them immediately, or drag remote files right out of Ulak into any Windows Explorer folder.",
+      b5_kicker: "Checkpointed",
       b5_title: "Safe pause & resume",
       b5_desc:
         "Wi-Fi dropped halfway through a 10 GB file? Ulak saves your progress and checks every byte at the end so files never arrive corrupted.",
       b5_badge: "Verified",
+      b5_sub: "BLAKE3 digest matched · .part finalized",
+      b6_kicker: "Keyboard-first",
       b6_title: "Runs quietly in your system tray",
       b6_desc:
         "Close the window and Ulak keeps sharing in the background. Press one shortcut anytime from anywhere to bring it right back up.",
       kbd_summon: "Summon Ulak",
       kbd_cmd: "Command menu",
       kbd_filter: "Filter list",
+      b7_kicker: "Persistent identity",
       b7_title: "Recognizes your PC even when IP changes",
       b7_desc:
         "Switched from Wi-Fi to Ethernet cable? Ulak remembers each paired computer by its own identity, not a temporary router address.",
+      orbit_kicker: "Local topology",
       orbit_title_1: "Every device,",
       orbit_title_2: "effortlessly connected.",
       orbit_subtitle:
@@ -101,7 +120,6 @@
       o6_title: "Built-in local CLI",
       o6_desc:
         "Script shares and downloads via the running desktop's named pipe.",
-      orbit_bar_left: "Nearby Radar",
       tech_eyebrow: "Under the hood · For engineers",
       tech_title_1: "Rust core, strict bounds,",
       tech_title_2: "verifiable by design.",
@@ -126,9 +144,9 @@
         "Ed25519/BLAKE3 identity, local CA TLS, mDNS, pairing, opaque catalog, streaming transfers",
       c_local: "Current-user SID named-pipe IPC & secret-free snapshot codec",
       c_cli:
-        "Product `ulak` CLI talking to the live desktop without taking the state lock",
+        "Product <code>ulak</code> CLI talking to the live desktop without taking the state lock",
       c_drag:
-        "Shared Windows OLE virtual-file COM stream (`IDataObject` / `IStream`)",
+        "Shared Windows OLE virtual-file COM stream (<code>IDataObject</code> / <code>IStream</code>)",
       c_ui: "Tauri v2 Windows tray shell + React 19 / Zustand keyboard-first UI",
       c_guest:
         "Locally bundled HTML/JS browser interface with zero external requests",
@@ -160,9 +178,10 @@
       footer_col_repo: "Project",
       footer_proto: "Protocol v1",
       footer_arch: "Architecture",
+      footer_repo: "GitHub Repository",
       footer_license: "MIT License",
       zoom_devices:
-        "Devices overview: paired PCs, nearby radar, quick shares, and live transfer bar",
+        "Devices overview: paired PCs, nearby discovery, quick shares, and live transfer bar",
       zoom_guest_browser:
         "Offline browser guest view: browse folders and download files from any device",
       zoom_remote:
@@ -171,6 +190,8 @@
         "My shares & details: inspect source paths, audiences, and guest invitations",
       zoom_radar:
         "Nearby radar: mDNS discovery finds local Ulak computers automatically",
+      zoom_pair:
+        "6-digit numeric pairing: confirm the same code on both screens to verify trust",
       orbit_radar_head: "Nearby Radar",
       chip_browse: "Browse",
       chip_pair: "Pair",
@@ -189,16 +210,23 @@
       nav_tech: "Teknik Detaylar",
       nav_download: "İndir",
       hero_pill: "v0.1.0-alpha · Windows",
+      hero_pill_sub: "Açık kaynak",
       hero_title_1: "Dosyalarını Doğrudan Paylaş,",
       hero_title_2: "Bulut Olmadan.",
       hero_lead:
         "Bilgisayarındaki dosya ve klasörleri aynı Wi-Fi veya kablo ağındaki başka bir bilgisayara ya da telefona doğrudan aktar. İnternete yükleme yok, diske ikinci bir kopya çıkarma yok.",
       hero_cta_primary: "Windows İçin İndir",
       hero_cta_secondary: "Nasıl çalıştığını gör",
-      hero_meta: "Kurulumsuz tek .exe · Hesap gerektirmez · MIT açık kaynak",
+      hero_trust_1: "Kurulumsuz tek .exe",
+      hero_trust_2: "Yerel TLS + BLAKE3",
+      hero_trust_3: "Bulut ve kopya yok",
+      hero_trust_4: "MIT açık kaynak",
+      hero_view_overview: "Cihazlar",
+      hero_view_radar: "Yakın Radar",
+      hero_view_pair: "6 Haneli Eşleşme",
+      hero_inspect: "İncele",
       float_pair_label: "İki ekranda eşleştir",
       float_pair_badge: "Doğrulandı",
-      float_pair_sub: "IP adresi yazmaya gerek yok",
       float_dl_title: "Doğrudan yerel aktarım",
       facts_title_1: "Günlük kullanım için sade.",
       facts_title_2: "Karmaşık ayar yok.",
@@ -209,20 +237,23 @@
       fact_3_val: "Anında QR",
       fact_4_label: "Dosyalar ikinci kez kopyalanmadan kendi klasöründen akar",
       fact_4_val: "Yerinde",
+      tour_kicker: "İş Akışı",
       tour_title_1: "Herkesin anlayacağı kadar sade,",
       tour_title_2: "saniyeler içinde hazır.",
       tour_subtitle:
         "Bir dosya seç ya da klasörü sürükle bırak, kimin görebileceğini seç; karşı taraf kendi hızında doğrudan indirsin.",
-      tab_pair: "1. Eşleştir",
-      tab_audience: "2. Kim görsün?",
-      tab_guest: "3. Telefona QR",
-      tab_transfers: "4. Takip & Devam",
-      tab_keyboard: "5. Hızlı arama",
+      tab_pair: "Eşleştir",
+      tab_audience: "Kim görsün?",
+      tab_guest: "Telefona QR",
+      tab_transfers: "Takip & Devam",
+      tab_keyboard: "Hızlı arama",
       zoom_label: "Büyütmek için tıkla",
+      bento_kicker: "Yetenekler",
       bento_title_1: "Her şey kendi ağında kalır,",
       bento_title_2: "kontrol sende olur.",
       bento_subtitle:
         "Teknik ayarlarla uğraşmadan 20 GB’lık bir videoyu ya da tek bir belgeyi güvenle paylaşman için tasarlandı.",
+      b1_kicker: "Net erişim",
       b1_title: "Her klasörü kimin göreceğini sen seçersin",
       b1_desc:
         "İstersen tek kullanımlık davetle gizli tut, istersen yalnızca seçtiğin cihazlara aç (o an kapalı olsalar bile), istersen aynı ağdaki herkese görünür yap.",
@@ -232,30 +263,40 @@
       aud_2_tag: "Studio-PC, Archive-Node",
       aud_3: "Yerel ağdaki herkes",
       aud_3_tag: "Salt okunur Wi-Fi",
+      b2_kicker: "Tarayıcı misafirleri",
       b2_title: "Uygulama kurmadan telefona gönder",
       b2_desc:
         "iPhone, Android veya misafir bir bilgisayara dosya mı atacaksın? Tek kullanımlık QR kodu okut; klasör doğrudan tarayıcıda açılsın.",
+      b3_kicker: "Sıfır ek kopya",
       b3_title: "Diskte fazladan kopya yok",
       b3_desc:
         "Dev bir klasörü paylaştığında uygulama onu başka bir yere kopyalamaz veya ZIP yapmaz. Dosyalar durduğu yerden doğrudan karşıya akar.",
       b3_badge: "Yerinde",
+      b3_pipe_disk: "Disk",
+      b3_pipe_peer: "Alıcı",
       b3_sub: "Gönderici diskinde 0 bayt ek kopya",
+      b4_kicker: "Windows Explorer",
       b4_title: "Explorer’dan at, Explorer’a çek",
       b4_desc:
         "Paylaşmak istediğin klasörü pencereye sürükle bırak. Karşıdaki dosyaları da indirme bitmeden doğrudan Windows klasörüne sürükleyip al.",
+      b5_kicker: "Kaldığı yerden",
       b5_title: "Kesilse de kaldığı yerden devam",
       b5_desc:
         "10 GB’lık indirme yarıda Wi-Fi kopmasıyla kesilirse endişelenme. Kaldığı bayttan devam eder ve bitişte dosyanın sağlamlığını kontrol eder.",
       b5_badge: "Doğrulandı",
+      b5_sub: "BLAKE3 özeti doğrulandı · .part tamamlandı",
+      b6_kicker: "Klavye odaklı",
       b6_title: "Sistem tepsisinde sessizce çalışır",
       b6_desc:
         "Pencereyi kapatsan da paylaşımlar arka planda sürer. İstediğin an tek kısayolla Ulak’ı anında ekrana çağırabilirsin.",
       kbd_summon: "Ulak’ı getir",
       kbd_cmd: "Komut menüsü",
       kbd_filter: "Listeyi filtrele",
+      b7_kicker: "Kalıcı kimlik",
       b7_title: "IP değişse de bilgisayarını tanır",
       b7_desc:
         "Wi-Fi’dan Ethernet kablosuna mı geçtin? Ulak eşleşen cihazları geçici modem IP’siyle değil, kalıcı cihaz kimliğiyle hatırlar.",
+      orbit_kicker: "Yerel ağ topolojisi",
       orbit_title_1: "Tüm cihazların,",
       orbit_title_2: "zahmetsizce bağlı.",
       orbit_subtitle:
@@ -276,7 +317,6 @@
       o5_desc: "İç içe klasörleri ZIP beklemeye gerek kalmadan doğrudan indir.",
       o6_title: "Yerleşik yerel CLI",
       o6_desc: "Çalışan uygulamayı named pipe üzerinden komut satırıyla yönet.",
-      orbit_bar_left: "Yakın Radar",
       tech_eyebrow: "Perde arkası · Meraklısı ve geliştiriciler için",
       tech_title_1: "Rust çekirdek, sınırlı bellek,",
       tech_title_2: "uçtan uca doğrulanabilir.",
@@ -302,9 +342,9 @@
       c_local:
         "Geçerli kullanıcı SID’sine kilitli named-pipe IPC ve gizli verisiz anlık görüntü",
       c_cli:
-        "State kilidini almadan çalışan masaüstüyle konuşan `ulak` komut aracı",
+        "State kilidini almadan çalışan masaüstüyle konuşan <code>ulak</code> komut aracı",
       c_drag:
-        "Paylaşımlı Windows OLE sanal dosya COM akışı (`IDataObject` / `IStream`)",
+        "Paylaşımlı Windows OLE sanal dosya COM akışı (<code>IDataObject</code> / <code>IStream</code>)",
       c_ui: "Tauri v2 Windows sistem tepsisi kabuğu + React 19 / Zustand klavye odaklı arayüz",
       c_guest:
         "Dış ağ isteği yapmayan, tamamen yerel gömülü HTML/JS misafir arayüzü",
@@ -336,9 +376,10 @@
       footer_col_repo: "Proje",
       footer_proto: "Protokol v1",
       footer_arch: "Mimari",
+      footer_repo: "GitHub Deposu",
       footer_license: "MIT Lisansı",
       zoom_devices:
-        "Cihazlar görünümü: eşleşen bilgisayarlar, yakın radar, hızlı paylaşımlar ve aktarım çubuğu",
+        "Cihazlar görünümü: eşleşen bilgisayarlar, yakın keşif, hızlı paylaşımlar ve aktarım çubuğu",
       zoom_guest_browser:
         "Çevrimdışı tarayıcı misafir arayüzü: uygulama kurmadan klasör gez ve indir",
       zoom_remote:
@@ -347,6 +388,8 @@
         "Paylaşımlarım ve detaylar: kaynak yolları, erişim izinleri ve misafir davetleri",
       zoom_radar:
         "Yakın radar: mDNS keşfi yerel ağdaki Ulak bilgisayarlarını otomatik bulur",
+      zoom_pair:
+        "6 haneli sayı eşleştirme: güveni doğrulamak için iki ekranda aynı kodu onayla",
       orbit_radar_head: "Yakın Radar",
       chip_browse: "Göz at",
       chip_pair: "Eşleştir",
@@ -356,6 +399,36 @@
       radar_detail_thinkpad: "Wi-Fi’da bulundu · 6 haneli kodla eşleştir",
       radar_detail_phone: "Tarayıcı misafiri · 5 dk tek seferlik QR",
       radar_detail_archive: "Eşleşti · Çevrimdışı · Son görülme 3 saat önce",
+    },
+  };
+
+  const HERO_SCENES = {
+    overview: {
+      img: "./images/devices-overview.png",
+      meta: "Workstation-01 · :7443",
+      captionKey: "zoom_devices",
+      alt_en:
+        "Ulak desktop window showing paired devices, nearby discovery, local shares, and active transfer bar",
+      alt_tr:
+        "Eşleşen cihazları, yakın keşfi, yerel paylaşımları ve canlı aktarım çubuğunu gösteren Ulak penceresi",
+    },
+    radar: {
+      img: "./images/nearby-radar.png",
+      meta: "_ulak._tcp.local. · mDNS",
+      captionKey: "zoom_radar",
+      alt_en:
+        "Ulak nearby discovery radar showing local computers ready to pair",
+      alt_tr:
+        "Yerel ağda eşleşmeye hazır bilgisayarları gösteren Ulak yakın keşif radarı",
+    },
+    pair: {
+      img: "./images/numeric-pairing.png",
+      meta: "Ed25519 · 791 696",
+      captionKey: "zoom_pair",
+      alt_en:
+        "Six-digit numeric pairing confirmation dialog showing code 791 696",
+      alt_tr:
+        "791 696 doğrulama kodunu gösteren 6 haneli sayı eşleştirme penceresi",
     },
   };
 
@@ -438,9 +511,14 @@
   };
 
   let currentLang = "en";
+  let currentHeroScene = "overview";
   let currentTour = "pair";
+  let heroTimer = null;
   let tourTimer = null;
   let lastFocused = null;
+
+  const prefersReducedMotion = () =>
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function detectInitialLang() {
     try {
@@ -455,6 +533,21 @@
       : "en";
   }
 
+  function updateTourIndicator() {
+    const container = document.getElementById("tour-tabs");
+    const indicator = document.getElementById("tour-tabs-indicator");
+    if (!container || !indicator) return;
+    const activeTab = container.querySelector(
+      '.tour-tab[aria-selected="true"]',
+    );
+    if (!activeTab) return;
+    const offsetLeft = activeTab.offsetLeft;
+    const width = activeTab.offsetWidth;
+    indicator.style.width = `${width}px`;
+    indicator.style.transform = `translateX(${offsetLeft}px)`;
+    indicator.style.opacity = "1";
+  }
+
   function applyLang(lang) {
     currentLang = lang === "tr" ? "tr" : "en";
     document.documentElement.lang = currentLang;
@@ -465,7 +558,11 @@
     document.querySelectorAll("[data-i18n]").forEach((el) => {
       const key = el.getAttribute("data-i18n");
       if (!key || !(key in dict)) return;
-      if (el.closest(".tech-point") || el.tagName === "P") {
+      if (
+        el.closest(".tech-point") ||
+        el.closest(".crate-row") ||
+        el.tagName === "P"
+      ) {
         el.innerHTML = dict[key];
       } else {
         el.textContent = dict[key];
@@ -483,6 +580,7 @@
       });
     }
 
+    renderHeroScene(currentHeroScene, false);
     renderTourStep(currentTour, false);
 
     const activeRadar = document.querySelector("[data-radar-device].is-active");
@@ -492,11 +590,61 @@
       if (chipName) statusName.textContent = chipName.textContent;
     }
 
+    window.requestAnimationFrame(updateTourIndicator);
+
     try {
       localStorage.setItem("ulak-lang", currentLang);
     } catch {
       // Ignore storage failures
     }
+  }
+
+  function renderHeroScene(sceneKey, animate) {
+    const scene = HERO_SCENES[sceneKey];
+    if (!scene) return;
+    currentHeroScene = sceneKey;
+
+    const frame = document.getElementById("hero-stage");
+    const img = document.getElementById("hero-screen-img");
+    const screenBtn = document.getElementById("hero-screen-btn");
+    const expandBtn = document.getElementById("hero-zoom-trigger");
+    const metaEl = document.getElementById("hero-scene-meta");
+
+    document.querySelectorAll(".hero-scene-tab").forEach((tab) => {
+      const active = tab.getAttribute("data-hero-scene") === sceneKey;
+      tab.setAttribute("aria-selected", active ? "true" : "false");
+    });
+
+    const alt = currentLang === "tr" ? scene.alt_tr : scene.alt_en;
+
+    const applyScene = () => {
+      if (img) {
+        img.src = scene.img;
+        img.alt = alt;
+      }
+      if (metaEl) metaEl.textContent = scene.meta;
+      [screenBtn, expandBtn].forEach((btn) => {
+        if (!btn) return;
+        btn.setAttribute("data-zoom-src", scene.img);
+        btn.setAttribute("data-zoom-caption-key", scene.captionKey);
+      });
+    };
+
+    if (!animate || !frame || prefersReducedMotion()) {
+      applyScene();
+      return;
+    }
+
+    if (heroTimer) {
+      window.clearTimeout(heroTimer);
+      heroTimer = null;
+    }
+    frame.classList.add("is-switching");
+    heroTimer = window.setTimeout(() => {
+      applyScene();
+      frame.classList.remove("is-switching");
+      heroTimer = null;
+    }, 105);
   }
 
   function renderTourStep(stepKey, animate) {
@@ -515,6 +663,7 @@
       const active = tab.getAttribute("data-tour") === stepKey;
       tab.setAttribute("aria-selected", active ? "true" : "false");
     });
+    updateTourIndicator();
 
     const title = currentLang === "tr" ? step.title_tr : step.title_en;
     const desc = currentLang === "tr" ? step.desc_tr : step.desc_en;
@@ -543,11 +692,7 @@
       }
     };
 
-    if (
-      !animate ||
-      !frame ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
+    if (!animate || !frame || prefersReducedMotion()) {
       applyContent();
       return;
     }
@@ -561,7 +706,7 @@
       applyContent();
       frame.classList.remove("is-switching");
       tourTimer = null;
-    }, 115);
+    }, 110);
   }
 
   function bindTabs(selector, onSelect) {
@@ -613,6 +758,90 @@
     }, 180);
   }
 
+  function initSpotlightCards() {
+    if (
+      prefersReducedMotion() ||
+      !window.matchMedia("(hover: hover) and (pointer: fine)").matches
+    ) {
+      return;
+    }
+
+    document.querySelectorAll(".spotlight-card").forEach((card) => {
+      let rafId = 0;
+      let nextX = 0;
+      let nextY = 0;
+
+      card.addEventListener("pointerenter", () => {
+        card.setAttribute("data-spotlight", "on");
+      });
+
+      card.addEventListener("pointerleave", () => {
+        card.removeAttribute("data-spotlight");
+      });
+
+      card.addEventListener("pointermove", (event) => {
+        const rect = card.getBoundingClientRect();
+        nextX = event.clientX - rect.left;
+        nextY = event.clientY - rect.top;
+        if (rafId) return;
+        rafId = window.requestAnimationFrame(() => {
+          card.style.setProperty("--spot-x", `${nextX}px`);
+          card.style.setProperty("--spot-y", `${nextY}px`);
+          rafId = 0;
+        });
+      });
+    });
+  }
+
+  function initRevealAndNav() {
+    const revealEls = Array.from(document.querySelectorAll("[data-reveal]"));
+    if (!("IntersectionObserver" in window) || prefersReducedMotion()) {
+      revealEls.forEach((el) => el.setAttribute("data-reveal", "in"));
+    } else {
+      const revealObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            entry.target.setAttribute("data-reveal", "in");
+            revealObserver.unobserve(entry.target);
+          });
+        },
+        { rootMargin: "0px 0px -8% 0px", threshold: 0.04 },
+      );
+      revealEls.forEach((el) => revealObserver.observe(el));
+    }
+
+    const navLinks = Array.from(document.querySelectorAll("[data-nav-link]"));
+    const navSections = navLinks
+      .map((link) => {
+        const id = link.getAttribute("data-nav-link");
+        const el = id ? document.getElementById(id) : null;
+        return el ? { id, el } : null;
+      })
+      .filter(Boolean);
+
+    const syncActiveNav = () => {
+      const probeY = window.innerHeight * 0.38;
+      let activeId = "";
+      for (const { id, el } of navSections) {
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= probeY && rect.bottom > 110) {
+          activeId = id;
+        }
+      }
+      navLinks.forEach((link) => {
+        link.setAttribute(
+          "data-active",
+          link.getAttribute("data-nav-link") === activeId ? "true" : "false",
+        );
+      });
+    };
+
+    syncActiveNav();
+    window.addEventListener("scroll", syncActiveNav, { passive: true });
+    window.addEventListener("resize", syncActiveNav, { passive: true });
+  }
+
   async function refreshReleaseInfo() {
     try {
       const controller = new AbortController();
@@ -658,17 +887,43 @@
   }
 
   function init() {
-    // Sticky header scroll state
+    // Sticky header & subtle hero frame settle on scroll
     const topbar = document.getElementById("topbar");
+    const heroStage = document.getElementById("hero-stage");
+    let heroHovered = false;
+
     const syncScroll = () => {
-      if (!topbar) return;
-      topbar.setAttribute(
-        "data-scrolled",
-        window.scrollY > 14 ? "true" : "false",
-      );
+      if (topbar) {
+        topbar.setAttribute(
+          "data-scrolled",
+          window.scrollY > 14 ? "true" : "false",
+        );
+      }
+      if (heroStage) {
+        heroStage.classList.toggle(
+          "is-flat",
+          heroHovered || window.scrollY > 120,
+        );
+      }
     };
+
+    if (heroStage) {
+      heroStage.addEventListener("pointerenter", () => {
+        heroHovered = true;
+        heroStage.classList.add("is-flat");
+      });
+      heroStage.addEventListener("pointerleave", () => {
+        heroHovered = false;
+        syncScroll();
+      });
+    }
+
     syncScroll();
     window.addEventListener("scroll", syncScroll, { passive: true });
+    window.addEventListener("resize", updateTourIndicator, { passive: true });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(updateTourIndicator).catch(() => {});
+    }
 
     // Language toggle
     document.querySelectorAll("[data-set-lang]").forEach((btn) => {
@@ -677,13 +932,45 @@
       });
     });
 
+    // Hero live scene switcher
+    bindTabs(".hero-scene-tab", (tab) => {
+      const key = tab.getAttribute("data-hero-scene");
+      if (key && key !== currentHeroScene) renderHeroScene(key, true);
+    });
+
     // Visual tour tabs
     bindTabs(".tour-tab", (tab) => {
       const key = tab.getAttribute("data-tour");
       if (key && key !== currentTour) renderTourStep(key, true);
     });
 
-    // Interactive radar device chips
+    // Interactive audience picker preview in bento card
+    const audienceRows = Array.from(
+      document.querySelectorAll("[data-audience-opt]"),
+    );
+    const selectAudience = (target) => {
+      audienceRows.forEach((row) => {
+        const active = row === target;
+        row.classList.toggle("is-active", active);
+        row.setAttribute("aria-checked", active ? "true" : "false");
+      });
+    };
+    audienceRows.forEach((row, index) => {
+      row.addEventListener("click", () => selectAudience(row));
+      row.addEventListener("keydown", (event) => {
+        let next = -1;
+        if (event.key === "ArrowDown" || event.key === "ArrowRight")
+          next = (index + 1) % audienceRows.length;
+        else if (event.key === "ArrowUp" || event.key === "ArrowLeft")
+          next = (index - 1 + audienceRows.length) % audienceRows.length;
+        if (next === -1) return;
+        event.preventDefault();
+        audienceRows[next].focus();
+        selectAudience(audienceRows[next]);
+      });
+    });
+
+    // Interactive radar device chips + SVG connection beams
     const radarDevices = {
       studio: { name: () => "Studio-PC", key: "radar_detail_studio" },
       thinkpad: { name: () => "ThinkPad-X1", key: "radar_detail_thinkpad" },
@@ -694,6 +981,7 @@
       archive: { name: () => "Archive-Node", key: "radar_detail_archive" },
     };
     const radarChips = document.querySelectorAll("[data-radar-device]");
+    const radarLinks = document.querySelectorAll("[data-link-for]");
     const radarStatusName = document.getElementById("radar-status-name");
     const radarStatusDetail = document.getElementById("radar-status-detail");
     radarChips.forEach((chip) => {
@@ -705,6 +993,12 @@
           const active = c === chip;
           c.classList.toggle("is-active", active);
           c.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        radarLinks.forEach((line) => {
+          line.classList.toggle(
+            "is-active",
+            line.getAttribute("data-link-for") === id,
+          );
         });
         if (radarStatusName) radarStatusName.textContent = info.name();
         if (radarStatusDetail) {
@@ -756,7 +1050,8 @@
         const capKey = el.getAttribute("data-zoom-caption-key");
         const directCap = el.getAttribute("data-zoom-caption");
         const caption = capKey ? COPY[currentLang][capKey] : directCap || "";
-        const img = el.querySelector("img");
+        const img =
+          el.querySelector("img") || document.getElementById("hero-screen-img");
         openLightbox(src, caption, img?.alt || caption);
       });
     });
@@ -770,6 +1065,9 @@
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") closeLightbox();
     });
+
+    initSpotlightCards();
+    initRevealAndNav();
 
     // Apply initial language & silently check GitHub for latest release assets
     applyLang(detectInitialLang());
