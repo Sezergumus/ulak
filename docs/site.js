@@ -31,7 +31,9 @@
       float_dl_title: "Direct local stream",
       facts_title_1: "Built for everyday speed.",
       facts_title_2: "Zero setup headaches.",
-      fact_1_label: "Cloud uploads, limits, or user accounts required",
+      fact_1_val: "100% Local",
+      fact_1_label:
+        "Files travel over your Wi-Fi or cable, with no cloud servers or sign-up",
       fact_2_label: "Compare one short number to pair nearby Windows PCs",
       fact_2_val: "6-Digit",
       fact_3_label: "Scan to open shared folders in any phone browser",
@@ -230,7 +232,9 @@
       float_dl_title: "Doğrudan yerel aktarım",
       facts_title_1: "Günlük kullanım için sade.",
       facts_title_2: "Karmaşık ayar yok.",
-      fact_1_label: "Buluta yükleme, kota sınırı veya üyelik zorunluluğu",
+      fact_1_val: "%100 Yerel",
+      fact_1_label:
+        "Dosyalar kendi Wi-Fi veya kablo ağından akar; bulut sunucusu ve üyelik yok",
       fact_2_label: "Yakındaki iki bilgisayarı eşleştirmek için kısa bir kod",
       fact_2_val: "6 Haneli",
       fact_3_label: "Telefon tarayıcısından klasör açmak için tek seferlik kod",
